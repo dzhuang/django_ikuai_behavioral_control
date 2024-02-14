@@ -12,4 +12,4 @@ django-crispy-forms<2
 django-npm
 psycopg2-binary
 
-git+https://github.com/dzhuang/PYiKuaiRouter.git
+pyikuai
