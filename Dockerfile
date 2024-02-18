@@ -5,6 +5,8 @@ ARG USERNAME=bc_user
 
 COPY --chown=$USERNAME behavioral_control /opt/behavioral_control/
 
+RUN chmod +x /opt/behavioral_control/start-server.sh
+
 WORKDIR /opt/behavioral_control/
 VOLUME /opt/behavioral_control/local_settings
 VOLUME /opt/behavioral_control/log
