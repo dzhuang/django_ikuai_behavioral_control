@@ -22,4 +22,22 @@ urlpatterns = [
          name='logout'),
     path('profile/', auth.user_profile, name='profile'),
     path('', views.home, name='home'),
+
+    path('router/<router_id>/devices/', views.list_devices,
+         name="device-list"),
+
+    path('router/<router_id>/device/<pk>/update',
+         views.DeviceUpdateView.as_view(), name="device-edit"),
+
+    path('router/<router_id>/<info_name>/ajax/', views.fetch_cached_info,
+         name="fetch-cached-info"),
+
+    path('router/<router_id>/domain_blacklist/<domain_blacklist_id>/edit/',
+         views.edit_domain_blacklist, name="domain_blacklist-edit"),
+
+    path('router/<router_id>/domain_blacklist/list/', views.list_domain_blacklist,
+         name="domain_blacklist-list"),
+
+    path('router/<router_id>/domain_blacklist/<domain_blacklist_id>/delete/',
+         views.delete_domain_blacklist, name="domain_blacklist-delete"),
 ]

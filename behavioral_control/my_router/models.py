@@ -7,11 +7,12 @@ from django.urls import reverse
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from django_celery_beat.models import IntervalSchedule, PeriodicTask
-from pyikuai import IKuai
+from pyikuai import IKuaiClient
 
-from my_router.constants import ROUTER_STATUS_CHOICES, router_status
+from my_router.constants import (DEFAULT_CACHE, ROUTER_STATUS_CHOICES,
+                                 router_status)
 from my_router.fields import MACAddressField
-from my_router.utils import (DEFAULT_CACHE, get_device_db_cache_key,
+from my_router.utils import (get_device_db_cache_key,
                              get_router_device_cache_key)
 
 
@@ -65,8 +66,9 @@ class Router(models.Model):
         return self.name
 
     def get_client(self):
-        return IKuai(
-            url=self.url, username=self.admin_username, password=self.admin_password)
+        return IKuaiClient(
+            url=self.url, username=self.admin_username,
+            password=self.admin_password)
 
     def setup_task(self):
         self.task = PeriodicTask.objects.create(
@@ -93,7 +95,7 @@ class Router(models.Model):
 class Device(models.Model):
     name = models.CharField(
         verbose_name=_("Device name"),
-        max_length=31, blank=False)
+        max_length=31, blank=True, null=True)
     mac = MACAddressField(
         verbose_name=_("MAC address"),
         blank=False, db_index=True)
@@ -107,7 +109,7 @@ class Device(models.Model):
         verbose_name=_("Ignored device"),
         default=False, help_text=_(
             "This device will be ignored when listing and bulk applying "
-            "limit time or forbid domain constraints."))
+            "constraints."))
     added_datetime = models.DateTimeField(
         default=now, verbose_name=_("Added datetime"))
 

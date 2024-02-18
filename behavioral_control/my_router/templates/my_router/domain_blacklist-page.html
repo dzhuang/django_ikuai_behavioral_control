@@ -1,0 +1,14 @@
+{% extends "generic-form-page.html" %}
+{% load i18n %}
+{% load static %}
+
+{% block head_assets_form_media %}
+  <script src="{% static 'admin/js/core.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+  <a class="btn btn-default" href="{% url "domain_blacklist-list" router_id %}">{% trans "List of Domain Blacklist" %}</a>
+  <a class="btn btn-default" href="{{ router_domain_blacklist_url }}" target="_blank">{% trans "Edit Domain blacklist on router" %}</a>
+
+  {{ block.super }}
+{% endblock %}

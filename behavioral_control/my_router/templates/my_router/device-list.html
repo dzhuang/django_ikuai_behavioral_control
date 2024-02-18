@@ -1,0 +1,148 @@
+{% extends "my_router/router_base.html" %}
+
+{% load i18n %}
+
+{% load static %}
+
+{% block title %}
+  {% trans "List of devices" %}
+{% endblock %}
+
+{% block header_extra %}
+  {% include "datatables-header.html" %}
+{% endblock %}
+
+{% block content %}
+  <h1>{% trans "List of devices" %}
+    {#        <a class="btn btn-danger" style="margin-left: 5em;" type="button" id="reboot-device" href="{% url 'router-reboot' router_id %}"> {% trans "Reboot" %}</a>#}
+  </h1>
+  <hr>
+  <div>
+    <input type="checkbox" id="offline-only"> {% trans "Offline only" %}
+    <input type="checkbox" id="filter-reject"> {% trans "Blocked only" %}
+    <input type="checkbox" id="skip-ignored" checked> {% trans "Skip ignored" %}
+  </div>
+  <table class="table table-striped devices-all">
+    <thead>
+    <th class="datacol">{% trans "ID" %}</th>
+    <th class="datacol">{% trans "Name of device" %}</th>
+    <th class="datacol">{% trans "Actions" %}</th>
+    <th class="datacol">{% trans "IP" %}</th>
+    <th class="datacol">{% trans "Mac" %}</th>
+    <th class="datacol">{% trans "Online" %}</th>
+    <th class="datacol">{% trans "Last seen" %}</th>
+    <th class="datacol">{% trans "Blocked" %}</th>
+{#    <th class="datacol">{% trans "Up limit" %}</th>#}
+{#    <th class="datacol">{% trans "Limit time" %}</th>#}
+{#    <th class="datacol">{% trans "Forbid domain" %}</th>#}
+    <th class="datacol">{% trans "Ignored" %}</th>
+    <th class="datacol">{% trans "Domain Blacklist" %}</th>
+    </thead>
+  </table>
+{% endblock %}
+
+{% block page_bottom_javascript_extra %}
+  {% get_current_js_lang_name as LANG %}
+  <script type="text/javascript">
+    var tbl = $("table.devices-all").DataTable({
+      "ajax": {
+        "url": '{% url "fetch-cached-info" router_id "device" %}',
+        "dataSrc": ""
+      },
+      "columns": [
+        {"data": "index"},
+        {"data": "name"},
+        {
+          "data": "edit-url",
+          render: function (data, type, row, meta) {
+            if (type === 'display') {
+              return "<a class='btn btn-default btn-sm' href='" + data + "'> {% trans 'Edit' %} </a>"
+            }
+            return data;
+          }
+        },
+        {"data": "ip_addr"},
+        {"data": "mac"},
+        {
+          "data": "online",
+          "render": function (data, type, row) {
+            if (type === 'display') {
+              return data === false ? '<i class="fa fa-power-off text-danger"></i>' : '<i class="fa fa-wifi text-success"></i>';
+            }
+            return data
+          }
+
+        },
+        {"data": "last_seen"},
+        {
+          "data": "reject",
+          "render": function (data, type, row) {
+            if (type === 'display') {
+              return data === 1 ? '<i class="fa fa-check-square-o"></i>' : '<i class="fa fa-square-o"></i>';
+            }
+            return data
+          }
+        },
+        {
+          "data": "ignored",
+          "render": function (data, type, row) {
+            if (type === 'display') {
+              return data === true ? '<i class="fa fa-check-square-o"></i>' : '<i class="fa fa-square-o"></i>';
+            }
+            return data
+          }
+        },
+        { "data": "domain_blacklist",
+          "render": function (data, type, row) {
+            if (type === 'display') {
+              if (Array.isArray(data) && data.length) {
+                return data.map(function (item) {
+                  // 根据enabled字段的值选择按钮类
+                  var btnClass = item.enabled === 'enabled' ? 'btn-primary' : 'btn-warning';
+                  // 返回带有相应类的按钮HTML字符串
+                  return '<a href="' + item.url + '" class="btn ' + btnClass + '">' + item.name + '</a>';
+                }).join(" "); // 使用空格分隔每个按钮
+              }
+              return ""; // 如果data不是期望的数组，返回空字符串
+            }
+            return ""
+          }
+        },
+        {#{ "data": "uptime" },#}
+        {#{ "data": "hostname" },#}
+        {#{ "data": "timestamp" },#}
+        {#{ "data": "client_type" }#}
+      ],
+      columnDefs: [],
+      rowCallback: function (row, data, index) {
+        if (data["reject"] === 1) {
+          $(row).css('background-color', '#ffc6cc');
+        } else if (data["online"] === false) {
+          $(row).css('background-color', 'lightgrey');
+        } else if (data["online"] === true) {
+          $(row).css('background-color', '#c4ffca');
+        }
+      },
+      "scrollCollapse": true,
+      "paging": false,
+      "ordering": true,
+      "language": {url: '{% static "datatables-i18n/i18n/" %}{{LANG}}.json'},
+    });
+    $('#filter-reject').on('change', function () {
+      let column_number = 5,
+        filterValue = this.checked ? '1' : '';
+      tbl.column(7).search(filterValue).draw();
+    });
+    $('#offline-only').on('change', function () {
+      let column_number = 7,
+        filterValue = this.checked ? false : "";
+      tbl.column(5).search(filterValue).draw();
+    });
+    $('#skip-ignored').on('change', function () {
+      let column_number = 8,
+        filterValue = this.checked ? false : "";
+      tbl.column(column_number).search(filterValue).draw();
+    }).change();
+  </script>
+  {{ block.super }}
+{% endblock %}

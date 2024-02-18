@@ -13,3 +13,15 @@ django-npm
 psycopg2-binary
 
 pyikuai
+
+# For running jupyter notebook
+# python manage.py shell_plus --notebook
+django-extensions
+jupyter
+ipython
+
+# https://github.com/microsoft/azuredatastudio/issues/23945#issuecomment-1882927090
+notebook==6.5.6
+
+# https://blog.csdn.net/qq_57918763/article/details/133648181
+traitlets==5.9.0

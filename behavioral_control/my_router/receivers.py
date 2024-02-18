@@ -4,6 +4,7 @@ from django.dispatch import receiver
 from rest_framework.authtoken.models import Token
 
 from my_router.constants import router_status
+
 # from my_router.models import Device, Router
 # from my_router.views import fetch_new_info_save_and_set_cache
 

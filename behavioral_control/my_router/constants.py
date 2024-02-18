@@ -5,14 +5,22 @@ CACHE_VERSION = 1
 DEFAULT_CACHE = cache.caches["default"]
 
 ROUTER_DEVICES_CACHE_KEY_PATTERN = "router-instance:{router_id}{cache_version}"
-LIMIT_TIMES_CACHE_KEY_PATTER = "limit_time:{router_id}:{cache_version}"
-FORBID_DOMAINS_CACHE_KEY_PATTER = "forbid_domain:{router_id}:{cache_version}"
 
 ROUTER_DEVICE_MAC_ADDRESSES_CACHE_KEY_PATTERN = (
     "{router_id}:mac_addresses:{cache_version}")
 ROUTER_DEVICE_CACHE_KEY_PATTERN = "{router_id}:device:{mac}{cache_version}"
 
 DEVICE_DB_CACHE_KEY_PATTERN = "db-cache:{mac}:{cache_version}"
+
+ROUTER_DEVICE_MAC_GROUPS_LIST_CACHE_KEY_PATTERN = (
+    "{router_id}:mac_groups:{cache_version}")
+
+ROUTER_ACL_L7_LIST_CACHE_KEY_PATTERN = "{router_id}:acl_l7:{cache_version}"
+
+ROUTER_URL_BLACK_LIST_CACHE_KEY_PATTERN = "{router_id}:url_black:{cache_version}"
+
+ROUTER_DOMAIN_BLACKLIST_CACHE_KEY_PATTERN = (
+    "{router_id}:domain_black:{cache_version}")
 
 
 class ReadonlyDict(dict):

@@ -1,7 +1,7 @@
 /*global Calendar, findPosX, findPosY, get_format, gettext, gettext_noop, interpolate, ngettext, quickElement*/
 // Inserts shortcut buttons after all of the following:
-//     <input type="text" class="vDateField">
-//     <input type="text" class="vTimeField">
+//     <input_ type="text" class="vDateField">
+//     <input_ type="text" class="vTimeField">
 'use strict';
 {
     const DateTimeShortcuts = {
@@ -181,7 +181,7 @@
             minute_list.className = 'minutelist';
             // The list of choices can be overridden in JavaScript like this:
             // DateTimeShortcuts.minutesOptions.name = [['3 a.m.', 3]];
-            // where name is the name attribute of the <input>.
+            // where name is the name attribute of the <input_>.
             const name = typeof DateTimeShortcuts.minutesOptions[sel.name] === 'undefined' ? 'default_' : sel.name;
             DateTimeShortcuts.minutesOptions[name].forEach(function(element) {
                 const time_link = quickElement('a', quickElement('li', minute_list), gettext(element[0]), 'href', '#');

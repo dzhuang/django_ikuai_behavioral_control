@@ -1,0 +1,126 @@
+{% extends "my_router/router_base.html" %}
+
+{% load i18n %}
+
+{% load static %}
+
+{% block title %}
+  {% trans "List of Domain blacklist" %}
+{% endblock %}
+
+{% block header_extra %}
+  {% include "datatables-header.html" %}
+{% endblock %}
+
+{% block content %}
+  <h1>{% trans "List of Domain blacklist" %}</h1>
+
+  <a class="btn btn-default"
+     href="{% url "domain_blacklist-edit" router_id -1 %}">{% trans "Add Domain blacklist" %}</a>
+  <a class="btn btn-default"
+     href="{{ router_domain_blacklist_url }}" target="_blank">{% trans "Edit Domain blacklist on router" %}</a>
+
+  <table class="table table-striped domain_blacklist-all">
+    <thead>
+    <th class="datacol">{% trans "ID" %}</th>
+    <th class="datacol">{% trans "Name" %}</th>
+    <th class="datacol">{% trans "Domain Group" %}</th>
+    <th class="datacol">{% trans "Actions" %}</th>
+    <th class="datacol">{% trans "Enabled" %}</th>
+    <th class="datacol">{% trans "Apply to" %}</th>
+    <th class="datacol">{% trans "Mon" %}</th>
+    <th class="datacol">{% trans "Tue" %}</th>
+    <th class="datacol">{% trans "Wed" %}</th>
+    <th class="datacol">{% trans "Thu" %}</th>
+    <th class="datacol">{% trans "Fri" %}</th>
+    <th class="datacol">{% trans "Sat" %}</th>
+    <th class="datacol">{% trans "Sun" %}</th>
+    <th class="datacol">{% trans "Start time" %}</th>
+    <th class="datacol">{% trans "End time" %}</th>
+    </thead>
+  </table>
+{% endblock %}
+
+{% block page_bottom_javascript_extra %}
+
+  {% get_current_js_lang_name as LANG %}
+  <script type="text/javascript">
+    var tbl = $("table.domain_blacklist-all").DataTable({
+      "ajax": {
+        "url": '{% url "fetch-cached-info" router_id "domain_blacklist" %}',
+        "dataSrc": ""
+      },
+      "columns": [
+        {"data": "id"},
+        {"data": "comment"},
+        {"data": "domain_group"},
+        {
+          "data": "edit-url",
+          "render": function (data, type, row, meta) {
+            if (type === 'display') {
+              return "<a class='btn btn-default btn-sm' href='" + data + "'> {% trans 'Edit' %} </a>" +
+                "<button class='btn btn-danger btn-sm remove-item' data-url='" + row["delete-url"] + "' onclick='removeItem(event);'> {% trans 'Delete' %} </button>"
+            }
+            return data;
+          }
+        },
+        {
+          "data": "enabled",
+          "render": function (data, type, row) {
+            if (type === 'display') {
+              return data ? '<i class="fa fa-check-square-o"></i>' : '<i class="fa fa-square-o"></i>';
+            }
+            return data
+          }
+        },
+        {
+          "data": "apply_to", "render": function (data) {
+            return data.join(", ");
+          }
+        },
+        {
+          "data": "days", "render": function (data) {
+            return data.includes('mon') ? '<i class="fa fa-check-square-o"></i>' : '<i class="fa fa-square-o"></i>';
+          }
+        },
+        {
+          "data": "days", "render": function (data) {
+            return data.includes('tue') ? '<i class="fa fa-check-square-o"></i>' : '<i class="fa fa-square-o"></i>';
+          }
+        },
+        {
+          "data": "days", "render": function (data) {
+            return data.includes('wed') ? '<i class="fa fa-check-square-o"></i>' : '<i class="fa fa-square-o"></i>';
+          }
+        },
+        {
+          "data": "days", "render": function (data) {
+            return data.includes('thu') ? '<i class="fa fa-check-square-o"></i>' : '<i class="fa fa-square-o"></i>';
+          }
+        },
+        {
+          "data": "days", "render": function (data) {
+            return data.includes('fri') ? '<i class="fa fa-check-square-o"></i>' : '<i class="fa fa-square-o"></i>';
+          }
+        },
+        {
+          "data": "days", "render": function (data) {
+            return data.includes('sat') ? '<i class="fa fa-check-square-o"></i>' : '<i class="fa fa-square-o"></i>';
+          }
+        },
+        {
+          "data": "days", "render": function (data) {
+            return data.includes('sun') ? '<i class="fa fa-check-square-o"></i>' : '<i class="fa fa-square-o"></i>';
+          }
+        },
+        {"data": "start_time"},
+        {"data": "end_time"},
+      ],
+      "scrollCollapse": true,
+      "paging": false,
+      "ordering": true,
+      "language": {url: '{% static "datatables-i18n/i18n/" %}{{LANG}}.json'},
+    });
+  </script>
+  {{ block.super }}
+{% endblock %}

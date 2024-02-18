@@ -94,6 +94,7 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'rest_framework',
     'my_router',
+    "django_extensions",
 ]
 
 CRISPY_TEMPLATE_PACK = "bootstrap3"
@@ -355,3 +356,22 @@ if local_settings is not None:  # pragma: no cover
 
 if DEBUG:
     ALLOWED_HOSTS = ("*",)
+
+NOTEBOOK_DEFAULT_URL = '/tree'  # Using Jupyter
+NOTEBOOK_DIR = os.path.join(BASE_DIR, "notebooks")
+
+NOTEBOOK_ARGUMENTS = [
+    '--allow-root',
+    '--port', '8889',
+    '--notebook-dir', NOTEBOOK_DIR,
+    '--NotebookApp.default_url', NOTEBOOK_DEFAULT_URL,
+    '--NotebookApp.token', '',
+    '--NotebookApp.password', ''
+]
+
+if not sys.platform.lower().startswith("win"):
+    NOTEBOOK_ARGUMENTS.extend(['--ip', '0.0.0.0'])
+
+IPYTHON_KERNEL_DISPLAY_NAME = 'Django Kernel'
+
+os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
