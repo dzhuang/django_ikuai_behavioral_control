@@ -12,7 +12,7 @@ django-crispy-forms<2
 django-npm
 psycopg2-binary
 
-pyikuai
+pyikuai>=0.4.0
 
 # For running jupyter notebook
 # python manage.py shell_plus --notebook
