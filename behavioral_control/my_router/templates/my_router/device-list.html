@@ -37,6 +37,7 @@
 {#    <th class="datacol">{% trans "Forbid domain" %}</th>#}
     <th class="datacol">{% trans "Ignored" %}</th>
     <th class="datacol">{% trans "Domain Blacklist" %}</th>
+    <th class="datacol">{% trans "Protocol Control" %}</th>
     </thead>
   </table>
 {% endblock %}
@@ -98,9 +99,32 @@
               if (Array.isArray(data) && data.length) {
                 return data.map(function (item) {
                   // 根据enabled字段的值选择按钮类
-                  var btnClass = item.enabled === 'enabled' ? 'btn-primary' : 'btn-warning';
+                  var btnClass = item.enabled === 'enabled' ? 'btn-danger' : 'btn-default';
                   // 返回带有相应类的按钮HTML字符串
-                  return '<a href="' + item.url + '" class="btn ' + btnClass + '">' + item.name + '</a>';
+                  return '<a href="' + item.url + '" class="btn btn-sm ' + btnClass + '">' + item.name + '</a>';
+                }).join(" "); // 使用空格分隔每个按钮
+              }
+              return ""; // 如果data不是期望的数组，返回空字符串
+            }
+            return ""
+          }
+        },
+        { "data": "acl_l7",
+          "render": function (data, type, row) {
+            if (type === 'display') {
+              if (Array.isArray(data) && data.length) {
+                return data.map(function (item) {
+                  // 根据enabled字段的值选择按钮类
+                  let btnClass;
+                  console.log(item);
+                  if (item.enabled !== 'enabled'){
+                    btnClass = 'btn-default';}
+                  else {
+                    btnClass = item.action === 'drop' ? 'btn-success' : 'btn-danger';
+                  }
+
+                  // 返回带有相应类的按钮HTML字符串
+                  return '<a href="' + item.url + '" class="btn btn-sm ' + btnClass + '">' + item.name + '</a>';
                 }).join(" "); // 使用空格分隔每个按钮
               }
               return ""; // 如果data不是期望的数组，返回空字符串

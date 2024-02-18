@@ -6,7 +6,7 @@ from django.utils.timezone import now
 
 from my_router.constants import DEFAULT_CACHE
 from my_router.models import Device
-from my_router.serializers import (DeviceModelSerializer,
+from my_router.serializers import (AclL7RuleSerializer, DeviceModelSerializer,
                                    DeviceParseSerializer,
                                    DeviceWithRuleParseSerializer,
                                    DomainBlackListSerializer,
@@ -416,6 +416,10 @@ class RouterDataManager:
     def router_domain_blacklist_url(self):
         return urljoin(self.router_instance.url, "#/behavior/banned-site")
 
+    @property
+    def router_protocol_control_url(self):
+        return urljoin(self.router_instance.url, "#/behavior/pro-control")
+
     def get_url_black_view_data(self):
         url_black = deepcopy(self.url_black_list)
         enabled = []
@@ -431,20 +435,24 @@ class RouterDataManager:
 
         return {"enabled": enabled, "disabled": disabled}
 
-    def get_acl_l7_view_data(self):
+    def get_acl_l7_list_data(self):
         acl_l7 = deepcopy(self.acl_l7_list)
-        enabled = []
-        disabled = []
 
+        ret = {}
         for acl_l7_item in acl_l7:
-            mac_list = acl_l7_item["src_addr"].split(",")
-            acl_l7_item.update({"apply_to": mac_list})
-            if acl_l7_item["enabled"] == "yes":
-                enabled.append(acl_l7_item)
-            else:
-                disabled.append(acl_l7_item)
+            acl_l7_id = int(acl_l7_item["id"])
+            serializer = AclL7RuleSerializer(data=acl_l7_item)
+            if not serializer.is_valid():
+                continue
 
-        return {"enabled": enabled, "disabled": disabled}
+            ret[acl_l7_id] = serializer.get_datatable_data(self.router_id)
+
+        return ret
+
+    def get_acl_l7_list_for_view(self):
+        acl_l7_list_data = self.get_acl_l7_list_data()
+
+        return list(acl_l7_list_data.values())
 
     def get_view_data(self, info_name):
         assert info_name in [
@@ -460,4 +468,4 @@ class RouterDataManager:
             return self.get_url_black_view_data()
 
         elif info_name == "acl_l7":
-            return self.get_acl_l7_view_data()
+            return self.get_acl_l7_list_for_view()

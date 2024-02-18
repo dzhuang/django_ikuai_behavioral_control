@@ -1,0 +1,14 @@
+{% extends "generic-form-page.html" %}
+{% load i18n %}
+{% load static %}
+
+{% block head_assets_form_media %}
+  <script src="{% static 'admin/js/core.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+  <a class="btn btn-default" href="{% url "acl_l7-list" router_id %}">{% trans "List of Protocol control" %}</a>
+  <a class="btn btn-default" href="{{ router_protocol_control_url }}" target="_blank">{% trans "Edit Protocol control selection on router" %}</a>
+
+  {{ block.super }}
+{% endblock %}

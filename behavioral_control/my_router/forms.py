@@ -48,7 +48,10 @@ class BaseEditForm(StyledFormMixin, forms.Form):
     def __init__(self, add_new, name, start_time, end_time,
                  days, apply_to_choices, apply_to_initial, enabled,
                  *args, **kwargs):
+        weekdays_field_name = kwargs.pop("weekdays_field_name", "weekdays")
         super().__init__(*args, **kwargs)
+
+        self.weekdays_field_name = weekdays_field_name
 
         self.fields["name"] = forms.CharField(
             label=_("Name"),
@@ -73,7 +76,7 @@ class BaseEditForm(StyledFormMixin, forms.Form):
             initial=end_time,
             widget=TimePickerEndInput)
 
-        self.fields["weekdays"] = forms.MultipleChoiceField(
+        self.fields[self.weekdays_field_name] = forms.MultipleChoiceField(
             label=_("Weekdays"), initial=days,
             choices=DAYS_CHOICES,
             required=False,
@@ -101,12 +104,12 @@ class BaseEditForm(StyledFormMixin, forms.Form):
         # 定义基础布局，具体子类可以扩展或修改它
         self.helper.layout = Layout(
             'name',
-            # 'domain_group' 将在子类中定义
+            # 'init_domain_group' 将在子类中定义
+            'enabled',
             'start_time',
             'end_time',
-            'weekdays',
+            self.weekdays_field_name,
             'apply_to',
-            'enabled',
             # Submit按钮将在子类中根据需要添加
         )
 
@@ -128,7 +131,7 @@ class BaseEditForm(StyledFormMixin, forms.Form):
         cleaned_data["start_time"] = start_time.strftime("%H:%M")
         cleaned_data["end_time"] = end_time.strftime("%H:%M")
 
-        cleaned_data["weekdays"] = days_string_conversion(
-            cleaned_data["weekdays"], reverse_=True)
+        cleaned_data[self.weekdays_field_name] = days_string_conversion(
+            cleaned_data[self.weekdays_field_name], reverse_=True)
 
         return cleaned_data

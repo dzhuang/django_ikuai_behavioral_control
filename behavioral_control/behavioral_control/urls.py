@@ -40,4 +40,14 @@ urlpatterns = [
 
     path('router/<router_id>/domain_blacklist/<domain_blacklist_id>/delete/',
          views.delete_domain_blacklist, name="domain_blacklist-delete"),
+
+    path('router/<router_id>/protocol_control/list/', views.list_acl_l7,
+         name="acl_l7-list"),
+
+    path('router/<router_id>/protocol_control/<acl_l7_id>/edit/',
+         views.ACLL7EditView.as_view(), name="acl_l7-edit"),
+
+    path('router/<router_id>/protocol_control/<acl_l7_id>/delete/',
+         views.delete_acl_l7, name="acl_l7-delete"),
+
 ]

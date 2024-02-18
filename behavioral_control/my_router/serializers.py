@@ -257,6 +257,38 @@ class AclL7RuleSerializer(ValidateMixin, serializers.Serializer):  # noqa
             raise serializers.ValidationError("Action must be 'allow' or 'drop'.")
         return value
 
+    def get_datatable_data(self, router_id):
+        new_data = deepcopy(self.validated_data)
+
+        ret = dict()
+        ret["apply_to"] = new_data.pop("src_addr", "").split(",")
+        if ret["apply_to"] == ['']:
+            ret["apply_to"] = []
+        ret["enabled"] = new_data.pop("enabled") == "yes"
+        ret["edit-url"] = reverse(
+            "acl_l7-edit",
+            kwargs={
+                "router_id": router_id,
+                "acl_l7_id": new_data["id"]})
+
+        ret["delete-url"] = reverse(
+            "acl_l7-delete",
+            kwargs={
+                "router_id": router_id,
+                "acl_l7_id": new_data["id"]})
+
+        weekdays = new_data.pop("week")
+        ret["days"] = []
+        for day_name in days_string_conversion(weekdays):
+            ret["days"].append(day_name)
+
+        ret["start_time"], ret["end_time"] = new_data.pop("time").split("-")
+
+        for k, v in new_data.items():
+            ret[k] = v
+
+        return ret
+
 
 class ResultProtocolRulesSerializer(serializers.Serializer):
     # IKuaiClient list_acl_l7() result
@@ -412,6 +444,24 @@ class DeviceWithRuleParseSerializer(DeviceParseSerializer):
                                 "router_id": device_instance.router.id,
                                 "domain_blacklist_id": item["id"]}),
                         "enabled": enabled
+                    })
+
+        ret["acl_l7"] = []
+
+        if device_instance:
+            acl_l7_data = new_data.pop("acl_l7")
+            for enabled in ["enabled", "disabled"]:
+                items = acl_l7_data.get(enabled, [])
+                for item in items:
+                    ret["acl_l7"].append({
+                        "name": item["comment"] or "unknown",
+                        "url": reverse(
+                            "acl_l7-edit",
+                            kwargs={
+                                "router_id": device_instance.router.id,
+                                "acl_l7_id": item["id"]}),
+                        "enabled": enabled,
+                        "action": item["action"]
                     })
 
         for k, v in new_data.items():
