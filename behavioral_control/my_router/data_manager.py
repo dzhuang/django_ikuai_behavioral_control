@@ -283,18 +283,16 @@ class RouterDataManager:
                     for _mac in self.mac_groups[ipaddr]:
                         mac_rule_dict[_mac].setdefault("domain_blacklist", {})
                         if domain_blacklist["enabled"] == "yes":
-                            mac_rule_dict[_mac]["domain_blacklist"].setdefault(
-                                "enabled", [])  # noqa
+                            mac_rule_dict[_mac]["domain_blacklist"].setdefault("enabled", [])  # noqa
                             if domain_blacklist not in mac_rule_dict[_mac][
-                                "domain_blacklist"]["enabled"]:
-                                mac_rule_dict[_mac]["domain_blacklist"][
-                                    "enabled"].append(  # noqa
+                                    "domain_blacklist"]["enabled"]:
+                                mac_rule_dict[_mac]["domain_blacklist"]["enabled"].append(  # noqa
                                     domain_blacklist)
                         else:
                             mac_rule_dict[_mac]["domain_blacklist"].setdefault(
                                 "disabled", [])  # noqa
                             if domain_blacklist not in mac_rule_dict[_mac][
-                                "domain_blacklist"]["disabled"]:
+                                    "domain_blacklist"]["disabled"]:
                                 mac_rule_dict[_mac]["domain_blacklist"][
                                     "disabled"].append(  # noqa
                                     domain_blacklist)
@@ -306,19 +304,14 @@ class RouterDataManager:
                     for _mac in self.mac_groups[ip_addr]:
                         mac_rule_dict[_mac].setdefault("url_black", {})
                         if url_black["enabled"] == "yes":
-                            mac_rule_dict[_mac]["url_black"].setdefault("enabled",
-                                                                        [])
-                            if url_black not in mac_rule_dict[_mac][
-                                "url_black"]["enabled"]:
+                            mac_rule_dict[_mac]["url_black"].setdefault("enabled", [])  # noqa
+                            if url_black not in mac_rule_dict[_mac]["url_black"]["enabled"]:  # noqa
                                 mac_rule_dict[_mac]["url_black"]["enabled"].append(
                                     url_black)
                         else:
-                            mac_rule_dict[_mac]["url_black"].setdefault("disabled",
-                                                                        [])  # noqa
-                            if url_black not in mac_rule_dict[_mac][
-                                "url_black"]["disabled"]:
-                                mac_rule_dict[_mac]["url_black"]["disabled"].append(
-                                    url_black)
+                            mac_rule_dict[_mac]["url_black"].setdefault("disabled", [])  # noqa
+                            if url_black not in mac_rule_dict[_mac]["url_black"]["disabled"]:  # noqa
+                                mac_rule_dict[_mac]["url_black"]["disabled"].append(url_black)  # noqa
 
         for acl_l7 in deepcopy(self.acl_l7_list):
             src_addrs = acl_l7["src_addr"].split(",")
@@ -329,13 +322,13 @@ class RouterDataManager:
                         if acl_l7["enabled"] == "yes":
                             mac_rule_dict[_mac]["acl_l7"].setdefault("enabled", [])
                             if acl_l7 not in mac_rule_dict[_mac][
-                                "acl_l7"]["enabled"]:
+                                    "acl_l7"]["enabled"]:
                                 mac_rule_dict[_mac]["acl_l7"]["enabled"].append(
                                     acl_l7)
                         else:
                             mac_rule_dict[_mac]["acl_l7"].setdefault("disabled", [])
                             if acl_l7 not in mac_rule_dict[_mac][
-                                "acl_l7"]["disabled"]:
+                                    "acl_l7"]["disabled"]:
                                 mac_rule_dict[_mac]["acl_l7"]["disabled"].append(
                                     acl_l7)
 

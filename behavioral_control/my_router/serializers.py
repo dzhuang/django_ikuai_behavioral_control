@@ -10,10 +10,8 @@ from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
-from my_router.constants import DEFAULT_CACHE, days_const
 from my_router.models import Device
-from my_router.utils import (CacheDataDoesNotExist, days_string_conversion,
-                             get_router_device_cache_key)
+from my_router.utils import days_string_conversion
 
 
 def split_name(s, replace_quote_blank=True):

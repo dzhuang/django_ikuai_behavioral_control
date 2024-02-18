@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from datetime import datetime, time
+from datetime import time
 
-from crispy_forms.layout import Submit
+from crispy_forms.layout import Layout, Submit
 from django import forms
 from django.contrib import messages
-from django.contrib.admin.widgets import AdminTimeWidget
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
@@ -17,13 +16,11 @@ from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from django.views.generic.edit import UpdateView
 
-from my_router.constants import DAYS_CHOICES, DEFAULT_CACHE, days_const
+from my_router.constants import DEFAULT_CACHE
 from my_router.data_manager import RouterDataManager
+from my_router.forms import BaseEditForm
 from my_router.models import Device, Router
-from my_router.serializers import \
-    DeviceWithRuleParseSerializer  # DeviceDataReverseSerializer,; InfoSerializer
-from my_router.utils import (StyledForm, StyledModelForm,
-                             days_string_conversion,
+from my_router.utils import (StyledModelForm,
                              get_router_all_devices_mac_cache_key,
                              get_router_device_cache_key)
 
@@ -265,36 +262,6 @@ class DeviceUpdateView(LoginRequiredMixin, UpdateView):
         fetch_new_info_save_and_set_cache(router=self.object.router)
 
 
-class SelectDay(forms.SelectMultiple):
-    def __init__(self, attrs=None, choices=()):
-        attrs = {"class": "vSelectDay", **(attrs or {})}
-        super().__init__(attrs=attrs, choices=choices)
-
-
-class TimePickerInput(AdminTimeWidget):
-    input_type = 'time'
-
-    class Media:
-        extend = False
-        js = [
-            # "admin/js/calendar.js",
-            "js/TimePickerWidgetShortcuts.js",
-        ]
-
-
-class TimePickerEndInput(TimePickerInput):
-    def __init__(self, attrs=None, format=None):
-        attrs = {"class": "vTimeEndField", "size": "8", **(attrs or {})}
-        super().__init__(attrs=attrs, format=format)
-
-
-class MinutesWidget(forms.Select):
-    class_name = "vMinutesField"
-
-    def __init__(self, attrs=None):
-        super().__init__(attrs={"class": self.class_name, **(attrs or {})})
-
-
 def turn_str_time_to_time_obj(str_time):
     if not str_time.strip():
         return None
@@ -322,91 +289,27 @@ def get_mac_choice_tuple(router: Router) -> list:
     return apply_to_choices
 
 
-class DomainBlacklistEditForm(StyledForm):
-    class Media:
-        css = {
-            "all": ("admin/css/widgets.css",)
-        }
-
-    def __init__(self, add_new, name, start_time, end_time,
-                 days, apply_to_choices, apply_to_initial, enabled,
-                 domain_group_choices, domain_group=None,
-                 *args, **kwargs):
+class DomainBlacklistEditForm(BaseEditForm):
+    def __init__(self, domain_group_choices, domain_group=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-        disabled = False
-        self.fields["name"] = forms.CharField(
-            label=_("Name"),
-            max_length=32, required=True,
-            disabled=disabled,
-            initial=name)
 
         self.fields["domain_group"] = forms.ChoiceField(
             label=_("Domain Groups"),
             required=True,
             choices=domain_group_choices,
-            # disabled=disabled,
             initial=domain_group)
 
-        self.fields["start_time"] = forms.TimeField(
-            label=_("Start time"),
-            disabled=disabled, initial=start_time,
-            widget=TimePickerInput)
-
-        self.fields["length"] = forms.ChoiceField(
-            label=_("length"),
-            required=False,
-            disabled=disabled,
-            choices=(("", "----------"),) + tuple((i, i) for i in range(1, 361)),
-            widget=MinutesWidget,
-            help_text=_("Length of time in minutes")
+        # 确保domain_group在前面
+        self.helper.layout = Layout(
+            'name',
+            'domain_group',
+            'start_time',
+            'length',
+            'end_time',
+            'weekdays',
+            'apply_to',
+            'enabled',
         )
-
-        self.fields["end_time"] = forms.TimeField(
-            label=_("End time"),
-            disabled=disabled, initial=end_time,
-            widget=TimePickerEndInput)
-
-        self.fields["weekdays"] = forms.MultipleChoiceField(
-            label=_("Weekdays"), initial=days,
-            disabled=disabled, choices=DAYS_CHOICES,
-            required=False,
-            widget=SelectDay
-        )
-
-        self.fields["apply_to"] = forms.MultipleChoiceField(
-            label=_("Apply to"),
-            choices=apply_to_choices, initial=apply_to_initial,
-            required=False
-        )
-
-        self.fields["enabled"] = forms.BooleanField(
-            label=_("Enabled"),
-            required=False,
-            initial=enabled
-        )
-
-        if add_new:
-            self.helper.add_input(
-                Submit("submit", _("Add"), css_class="pc-submit-btn"))
-        else:
-            self.helper.add_input(
-                Submit("submit", _("Update"), css_class="pc-submit-btn"))
-
-    def clean(self):
-        start_time = self.cleaned_data["start_time"]
-        end_time = self.cleaned_data["end_time"]
-        if end_time < start_time:
-            raise forms.ValidationError(
-                _('"end_time" should be greater than "start_time"')
-            )
-        self.cleaned_data["start_time"] = start_time.strftime("%H:%M")
-        self.cleaned_data["end_time"] = end_time.strftime("%H:%M")
-
-        self.cleaned_data["weekdays"] = days_string_conversion(
-            self.cleaned_data["weekdays"], reverse_=True)
-
-        return self.cleaned_data
 
 
 @login_required
