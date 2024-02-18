@@ -95,7 +95,7 @@ class Router(models.Model):
 class Device(models.Model):
     name = models.CharField(
         verbose_name=_("Device name"),
-        max_length=31, blank=True, null=True)
+        max_length=64, blank=True, null=True)
     mac = MACAddressField(
         verbose_name=_("MAC address"),
         blank=False, db_index=True)
