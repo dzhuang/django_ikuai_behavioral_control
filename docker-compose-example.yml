@@ -1,0 +1,110 @@
+version: '3'
+
+services:
+  behavioral_control_service:
+    image: dzhuang/ikuai_behavioral_control:latest
+    container_name: behavioral_control
+    ports:
+      - 8030:8030
+#    volumes:
+      # - ./log:/opt/behavioral_control/log
+      #  - ./local_settings:/opt/behavioral_control/local_settings
+    environment:
+      - BEHAVIORAL_CONTROL_SERVER_SECRET_KEY=epouipoigpqeroilijapoiqerpclpourladjfoupuigjladfj2qyqewrozcoilq
+      # - BEHAVIORAL_CONTROL_SERVER_LANGUAGE_CODE=zh-hans
+      # - BEHAVIORAL_CONTROL_SERVER_TZ=Asia/Shanghai
+      - BEHAVIORAL_CONTROL_SERVER_DB_HOST=postgres_db_service
+      - BEHAVIORAL_CONTROL_SERVER_DB_PORT=5432
+      - BEHAVIORAL_CONTROL_SERVER_DB_USER=bc_user
+      - BEHAVIORAL_CONTROL_SERVER_DB_PASSWORD=bc_user_pw
+      - BEHAVIORAL_CONTROL_SERVER_DB=behavioral_control_db
+      - BEHAVIORAL_CONTROL_SERVER_DEBUG=off
+      - BEHAVIORAL_CONTROL_SERVER_REDIS_LOCATION=redis://redis_service:6379
+      - BEHAVIORAL_CONTROL_ALLOWED_HOST_router=foo.com
+      - BEHAVIORAL_CONTROL_ALLOWED_HOST_local=192.168.1.1
+      - BEHAVIORAL_CONTROL_CSRF_TRUSTED_ORIGINS_router=https://foo.com
+      - BEHAVIORAL_CONTROL_CSRF_TRUSTED_ORIGINS_local=http://192.168.1.1
+
+      - DJANGO_SUPERUSER_USERNAME=pc_test
+      - DJANGO_SUPERUSER_PASSWORD=pc_test
+      - DJANGO_SUPERUSER_EMAIL=blabal@example.com
+      - RABBITMQ_HOST=pc_rabbit_host
+      - RABBITMQ_USER=pc_rabbit
+      - RABBITMQ_PASSWORD=pc_rabbit
+    depends_on:
+      - redis_service
+      - rabbit
+    restart: always
+    labels:
+      - "com.centurylinklabs.watchtower.scope=router_behavioral_control"
+
+  postgres_db_service:
+    image: postgres:14
+    environment:
+      - POSTGRES_USER=bc_user
+      - POSTGRES_PASSWORD=bc_user_pw
+      - POSTGRES_DB=behavioral_control_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    restart: always
+
+  # RabbitMQ
+  rabbit:
+      hostname: pc_rabbit_host
+      image: rabbitmq:3.6.9
+      environment:
+          - RABBITMQ_DEFAULT_USER=pc_rabbit
+          - RABBITMQ_DEFAULT_PASS=pc_rabbit
+      ports:
+          - "5672:5672"
+          - "15672:15672"
+      restart: always
+
+  redis_service:
+    image: redis:alpine
+    restart: always
+    volumes:
+      - redis_data:/data
+
+  celery:
+#    volumes:
+#      - ./log:/opt/behavioral_control/log
+#      - ./local_settings:/opt/behavioral_control/local_settings
+    image: dzhuang/ikuai_behavioral_control:latest
+    container_name: behavioral_control_celery
+    command: celery -A behavioral_control worker --beat -l INFO
+    environment:
+      - BEHAVIORAL_CONTROL_SERVER_DEBUG=off
+      - BEHAVIORAL_CONTROL_SERVER_REDIS_LOCATION=redis://redis_service:6379
+      - BEHAVIORAL_CONTROL_SERVER_DB_HOST=postgres_db_service
+      - BEHAVIORAL_CONTROL_SERVER_DB_PORT=5432
+      - BEHAVIORAL_CONTROL_SERVER_DB_USER=bc_user
+      - BEHAVIORAL_CONTROL_SERVER_DB_PASSWORD=bc_user_pw
+      - BEHAVIORAL_CONTROL_SERVER_DB=behavioral_control_db
+      - RABBITMQ_HOST=pc_rabbit_host
+      - RABBITMQ_USER=pc_rabbit
+      - RABBITMQ_PASSWORD=pc_rabbit
+    depends_on:
+      - behavioral_control_service
+      - postgres_db_service
+      - redis_service
+      - rabbit
+    restart: always
+    labels:
+      - "com.centurylinklabs.watchtower.scope=router_behavioral_control"
+
+  # Enable image/container auto update
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower_behavioral_control
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      WATCHTOWER_MONITOR_ONLY: 'true'
+    command: --interval 30 behavioral_control, behavioral_control_celery
+    labels:
+      - "com.centurylinklabs.watchtower.scope=ikuai_behavioral_control"
+
+volumes:
+  redis_data:
+  postgres_data:

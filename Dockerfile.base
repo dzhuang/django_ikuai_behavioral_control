@@ -1,0 +1,43 @@
+FROM python:3.9-slim-buster
+MAINTAINER Dong Zhuang <dzhuang.scut@gmail.com>
+
+ARG USERNAME=bc_user
+ARG USER_UID=1000
+ARG USER_GID=$USER_UID
+
+COPY behavioral_control /tmp/behavioral_control/
+
+WORKDIR /tmp/behavioral_control/
+RUN groupadd --gid $USER_GID $USERNAME \
+    && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends -qq nginx libpq-dev sudo git \
+    && apt-get autoremove -y \
+    && apt-get clean \
+    # allow the user to call sudo
+    && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
+    && chmod 0440 /etc/sudoers.d/$USERNAME \
+    && rm -rf /var/lib/apt/lists/* \
+    # add 'daemon off;' to nginx and replace www-data to the new user
+    && echo "daemon off;" >> /etc/nginx/nginx.conf \
+    && sed  -i 's/www-data/'$USERNAME'/g' /etc/nginx/nginx.conf \
+    && mkdir -p /srv/www/static \
+    && mkdir -p /srv/node_modules \
+    && chown -R $USER_GID:$USER_UID /tmp/behavioral_control \
+    && chown -R $USER_GID:$USER_UID /srv/www/static \
+    && chown -R $USER_GID:$USER_UID /srv/node_modules \
+    && cp -r /tmp/behavioral_control/node_modules /srv \
+    && ln -sf /dev/stdout /var/log/nginx/access.log \
+    && ln -sf /dev/stderr /var/log/nginx/error.log
+
+ENV PATH="${PATH}:/home/$USERNAME/.local/bin"
+
+COPY nginx.default /etc/nginx/sites-available/default
+
+USER $USERNAME
+
+RUN /usr/local/bin/python -m pip install --upgrade pip --no-cache-dir \
+    && echo gunicorn >> requirements.txt \
+    && pip install --no-cache-dir -r requirements.txt \
+    && python manage.py collectstatic \
+    && sudo rm -r /tmp/*
