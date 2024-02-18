@@ -104,7 +104,7 @@ jobs:
 
           sleep 15
           py.test -vv behavioral_control/tests/image_test.py
-          docker-compose -f "docker-compose-example.yml" down
+          # docker-compose -f "docker-compose-example.yml" down
 
       - name: Push new base image
         if: steps.changed-files-specific.outputs.any_changed == 'true'
