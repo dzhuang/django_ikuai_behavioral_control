@@ -33,7 +33,7 @@ urlpatterns = [
          name="fetch-cached-info"),
 
     path('router/<router_id>/domain_blacklist/<domain_blacklist_id>/edit/',
-         views.edit_domain_blacklist, name="domain_blacklist-edit"),
+         views.DomainBlacklistEditView.as_view(), name="domain_blacklist-edit"),
 
     path('router/<router_id>/domain_blacklist/list/', views.list_domain_blacklist,
          name="domain_blacklist-list"),

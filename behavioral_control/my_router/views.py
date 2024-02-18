@@ -11,10 +11,10 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from django.http import (Http404, HttpResponseForbidden, HttpResponseRedirect,
                          JsonResponse)
-from django.shortcuts import get_object_or_404, render
-from django.urls import reverse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse, reverse_lazy
 from django.utils.translation import gettext_lazy as _
-from django.views.generic.edit import UpdateView
+from django.views.generic.edit import FormView, UpdateView
 
 from my_router.constants import DEFAULT_CACHE
 from my_router.data_manager import RouterDataManager
@@ -42,14 +42,6 @@ def home(request):
     return HttpResponseRedirect(
         reverse(
             "device-list", args=(routers[0].id,)))
-
-
-@login_required
-def list_devices(request, router_id):
-    return render(request, "my_router/device-list.html", {
-        "router_id": router_id,
-        "form_description": _("List of devices"),
-    })
 
 
 def fetch_new_info_save_and_set_cache(router_id: int | None = None,
@@ -289,6 +281,14 @@ def get_mac_choice_tuple(router: Router) -> list:
     return apply_to_choices
 
 
+@login_required
+def list_devices(request, router_id):
+    return render(request, "my_router/device-list.html", {
+        "router_id": router_id,
+        "form_description": _("List of devices"),
+    })
+
+
 class DomainBlacklistEditForm(BaseEditForm):
     def __init__(self, domain_group_choices, domain_group=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -460,3 +460,221 @@ def delete_domain_blacklist(request, router_id, domain_blacklist_id):
     fetch_new_info_save_and_set_cache(router=router)
 
     return JsonResponse(data={"success": True})
+
+
+class AddEditViewMixin(LoginRequiredMixin):
+    # form_class = DomainBlacklistEditForm
+    # template_name = 'my_router/domain_blacklist-page.html'
+    # id_name = "domain_blacklist_id"
+    # success_url_name = "domain_blacklist-edit"
+    # form_description_for_edit = _("Edit Domain Blacklist")
+    # form_description_for_add = _("Add Domain Blacklist")
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._rd_manager = None
+        self._is_add_new = None
+        self._router = None
+        self._id_value = None
+
+        self._all_data_with_id_as_key = None
+        self._data_item = None
+
+        self.new_id = None
+
+    @property
+    def router(self):
+        if self._router is None:
+            router_id = self.kwargs['router_id']
+            self._router = get_object_or_404(Router, id=router_id)
+        return self._router
+
+    @property
+    def rd_manager(self):
+        if self._rd_manager is None:
+            self._rd_manager = RouterDataManager(router_instance=self.router)
+        return self._rd_manager
+
+    @property
+    def is_add_new(self):
+        if self._is_add_new is None:
+            self._is_add_new = int(self.kwargs[self.id_name]) == -1
+        return self._is_add_new
+
+    @property
+    def id_value(self):
+        if self._id_value is None:
+            self._id_value = self.kwargs[self.id_name]
+            self._id_value = int(self._id_value)
+        return self._id_value
+
+    def get_all_data_with_id_as_key(self):
+        raise NotImplementedError()
+
+    @property
+    def all_data_with_id_as_key(self):
+        if self._all_data_with_id_as_key is None:
+            self._all_data_with_id_as_key = self.get_all_data_with_id_as_key()
+        return self._all_data_with_id_as_key
+
+    def validate_id_value(self):
+        if self.id_value == -1:
+            return
+        if self.id_value not in self.all_data_with_id_as_key:
+            raise Http404()
+
+    def get_apply_to_choices(self):
+        raise NotImplementedError()
+
+    def get_data_item(self):
+        return self.all_data_with_id_as_key[self.id_value]
+
+    @property
+    def data_item(self):
+        if self._data_item is None:
+            self._data_item = self.get_data_item()
+        return self._data_item
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+
+        apply_to_choices = self.get_apply_to_choices()
+
+        kwargs.update({
+            'add_new': self.is_add_new,
+            'apply_to_choices': apply_to_choices,
+        })
+
+        if self.is_add_new:
+            kwargs.update({
+                'name': '',
+                'start_time': turn_str_time_to_time_obj("00:00"),
+                'end_time': turn_str_time_to_time_obj("23:59"),
+                'days': ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+                'enabled': True,
+                'apply_to_initial': []
+            })
+        else:
+            kwargs.update({
+                'name': self.data_item.get("comment", ""),
+                'start_time': turn_str_time_to_time_obj(
+                    self.data_item.get("start_time")),
+                'end_time': turn_str_time_to_time_obj(
+                    self.data_item.get("end_time")),
+                'days': self.data_item["days"],
+                'enabled': self.data_item["enabled"],
+                'apply_to_initial': (
+                    self.data_item["apply_to"]
+                    if self.data_item["apply_to"] != [''] else [])
+            })
+
+        kwargs.update(self.get_extra_form_kwargs())
+        return kwargs
+
+    def get_extra_form_kwargs(self):
+        raise NotImplementedError()
+
+    def update_info_on_router(self, form):
+        raise NotImplementedError()
+
+    def form_valid(self, form):
+        self.update_info_on_router(form=form)
+        fetch_new_info_save_and_set_cache(router=self.router)
+        return redirect(self.get_success_url())
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['router_id'] = self.kwargs['router_id']
+        context['form_description'] = (
+            self.form_description_for_edit
+            if self.is_add_new else self.form_description_for_add)
+
+        context.update(self.get_extra_context_data())
+        return context
+
+    def get_extra_context_data(self):
+        return {}
+
+    def get_success_url(self):
+        # 设置操作成功后的重定向URL
+        id_value = self.kwargs[self.id_name]
+        if self.is_add_new:
+            assert self.new_id is not None
+            id_value = self.new_id
+
+        return reverse_lazy(
+            self.success_url_name,
+            kwargs={'router_id': self.kwargs['router_id'],
+                    self.id_name: id_value})
+
+
+class DomainBlacklistEditView(AddEditViewMixin, FormView):
+    form_class = DomainBlacklistEditForm
+    template_name = 'my_router/domain_blacklist-page.html'
+    id_name = "domain_blacklist_id"
+    success_url_name = "domain_blacklist-edit"
+    form_description_for_edit = _("Edit Domain Blacklist")
+    form_description_for_add = _("Add Domain Blacklist")
+
+    def get_all_data_with_id_as_key(self):
+        return self.rd_manager.get_domain_blacklist_data()
+
+    def get_apply_to_choices(self):
+        return ((v, v) for v in list(self.rd_manager.mac_groups.keys()))
+
+    def get_extra_form_kwargs(self):
+        extra_kwargs = {}
+
+        domain_group_value = None
+        if not self.is_add_new:
+            domain_group_value = self.data_item["domain_group"]
+
+        extra_kwargs['domain_group'] = domain_group_value
+
+        available_domain_black_list = set(
+            value["domain_group"] for value in self.all_data_with_id_as_key.values())
+
+        extra_kwargs["domain_group_choices"] = (
+                    (v, v) for v in available_domain_black_list)
+
+        return extra_kwargs
+
+    def get_ikuai_client_kwargs(self, form):
+        client_kwargs = deepcopy(form.cleaned_data)
+        client_kwargs["domain_groups"] = client_kwargs.pop("domain_group").split(",")
+        client_kwargs["comment"] = client_kwargs.pop("name")
+        client_kwargs["time"] = "-".join(
+            [client_kwargs.pop("start_time"), client_kwargs.pop("end_time")])
+        client_kwargs["ipaddrs"] = client_kwargs.pop("apply_to")
+        client_kwargs.pop("length", None)
+        return client_kwargs
+
+    def update_info_on_router(self, form):
+        client_kwargs = self.get_ikuai_client_kwargs(form)
+
+        # 执行添加或更新操作
+        try:
+            if self.is_add_new:
+                result = (
+                    self.rd_manager.ikuai_client.add_domain_blacklist(**client_kwargs))  # noqa
+                self.new_id = result["RowId"]
+                messages.success(
+                    self.request, _("Successfully added domain blacklist."))
+            else:
+                client_kwargs["domain_blacklist_id"] = (
+                    self.kwargs["domain_blacklist_id"])
+                self.rd_manager.ikuai_client.edit_domain_blacklist(**client_kwargs)
+                messages.success(
+                    self.request, _("Successfully updated domain blacklist."))
+        except Exception as e:
+            messages.error(
+                self.request,
+                (_("Failed to update domain blacklist: ")
+                 + f"{type(e).__name__}: {str(e)}"))
+
+            return self.form_invalid(form)
+
+    def get_extra_context_data(self):
+        return {
+            "router_domain_blacklist_url":
+                self.rd_manager.router_domain_blacklist_url}
