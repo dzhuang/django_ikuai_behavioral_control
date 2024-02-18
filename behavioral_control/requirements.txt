@@ -1,4 +1,4 @@
-django <5
+django <6
 requests
 celery
 django-celery-results
