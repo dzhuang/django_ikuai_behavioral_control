@@ -7,7 +7,7 @@ django-celery-beat
 django-redis
 djangorestframework
 django-cors-headers
-django-crispy-forms<2
+django-crispy-forms<3
 
 django-npm
 psycopg2-binary
