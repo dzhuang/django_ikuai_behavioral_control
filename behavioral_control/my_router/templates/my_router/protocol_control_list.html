@@ -120,10 +120,23 @@
         {"data": "start_time"},
         {"data": "end_time"},
       ],
+      rowCallback: function (row, data, index) {
+        if (data["enabled"] === false) {
+          $(row).css('background-color', 'lightgrey');
+        }
+        else {
+          if (data["action"] === "drop") {
+            $(row).css('background-color', '#ffc6cc');
+          } else if (data["action"] === "accept") {
+            $(row).css('background-color', '#c4ffca');
+          }
+        }
+      },
       "scrollCollapse": true,
       "paging": false,
       "ordering": true,
       "language": {url: '{% static "datatables-i18n/i18n/" %}{{LANG}}.json'},
+      "order": [[5, 'desc'], [6, 'asc']]
     });
   </script>
   {{ block.super }}
