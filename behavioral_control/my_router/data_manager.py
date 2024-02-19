@@ -41,6 +41,7 @@ class RouterDataManager:
 
         self.router_instance = router_instance
         self.ikuai_client = router_instance.get_client()
+
         self._devices = None
         self._device_dict = None
         self._online_mac_list = None
@@ -62,6 +63,17 @@ class RouterDataManager:
         # }}}
 
         self.is_initialized_from_cached_data = False
+
+    def reset_property_cache(self):
+        self._devices = None
+        self._device_dict = None
+        self._online_mac_list = None
+        self._mac_groups_list = None
+        self._mac_groups_map = None
+        self._mac_groups_map_reverse = None
+        self._acl_l7_list = None
+        self._url_black_list = None
+        self._domain_black_list = None
 
     def init_data_from_cache(self):
         self._devices = DEFAULT_CACHE.get(self.device_list_cache_key, [])

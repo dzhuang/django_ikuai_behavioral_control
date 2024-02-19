@@ -99,6 +99,8 @@ class DeviceForm(StyledModelForm):
         # todo: mac_group joining & leaving
         # todo: down_limit up_limit
 
+        mac_group_choices = kwargs.pop("mac_group_choices", ())
+        mac_group_initial = kwargs.pop("mac_group_initial", ())
         is_blocked = kwargs.pop("reject", False)
         has_error = kwargs.pop("has_error", False)
         super().__init__(*args, **kwargs)
@@ -109,6 +111,11 @@ class DeviceForm(StyledModelForm):
         self.fields["reject"] = forms.BooleanField(
             label=_("Blocked"),
             initial=is_blocked, required=False)
+
+        self.fields["mac_group"] = forms.MultipleChoiceField(
+            label=_("Mac Group"),
+            choices=mac_group_choices, initial=mac_group_initial,
+            required=False)
 
         if not has_error:
             self.helper.add_input(
@@ -146,6 +153,15 @@ class DeviceUpdateView(LoginRequiredMixin, UpdateView):
 
         try:
             kwargs["reject"] = bool(device_with_rules["reject"])
+
+            mac_groups = list(self.rd_manager.mac_groups.keys())
+
+            kwargs["mac_group_choices"] = (
+                (v, v) for v in mac_groups)
+
+            kwargs["mac_group_initial"] = (
+                self.rd_manager.mac_groups_reverse.get(self.object.mac, ()))
+
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -214,6 +230,35 @@ class DeviceUpdateView(LoginRequiredMixin, UpdateView):
                 update_cache_kwargs["reject"] = 0
             remote_updated = True
 
+        if "mac_group" in changed_data:
+            group_names_contain = form_data["mac_group"]
+            router_mac_group_infos = self.rd_manager.mac_groups_list["data"]
+
+            for info in router_mac_group_infos:
+                group_name = info["group_name"]
+                addr_pools = info["addr_pool"].split(",")
+                group_id = info["id"]
+
+                if group_name not in group_names_contain:
+                    addr_pools = [v for v in addr_pools if v != self.object.mac]
+                    if not addr_pools:
+                        messages.add_message(
+                            self.request,
+                            messages.ERROR,
+                            _(
+                                "The device is the only element in group '%s' "
+                                "and can't be removed.") % (group_name,))
+                        continue
+                else:
+                    addr_pools.append(self.object.mac)
+
+                self.rd_manager.ikuai_client.edit_mac_group(
+                    group_id=group_id, group_name=group_name,
+                    addr_pools=addr_pools)
+
+            self.rd_manager.reset_property_cache()
+            remote_updated = True
+
         if update_cache_kwargs:
             self.rd_manager.update_device_cache_info_attrs(
                 mac, **update_cache_kwargs)
@@ -230,6 +275,8 @@ class DeviceUpdateView(LoginRequiredMixin, UpdateView):
             messages.add_message(
                 self.request, messages.INFO, _("Successfully updated device."))
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             messages.add_message(
                 self.request, messages.ERROR, f"{type(e).__name__}： {str(e)}")
             return self.form_invalid(form)
