@@ -115,10 +115,10 @@ class BaseEditForm(StyledFormMixin, forms.Form):
 
         if add_new:
             self.helper.add_input(
-                Submit("submit", _("Add"), css_class="pc-submit-btn"))
+                Submit("submit", _("Add"), css_class="bc-submit-btn"))
         else:
             self.helper.add_input(
-                Submit("submit", _("Update"), css_class="pc-submit-btn"))
+                Submit("submit", _("Update"), css_class="bc-submit-btn"))
 
     def clean(self):
         cleaned_data = super().clean()

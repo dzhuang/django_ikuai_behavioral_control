@@ -20,7 +20,8 @@ from my_router.constants import DEFAULT_CACHE
 from my_router.data_manager import RouterDataManager
 from my_router.forms import BaseEditForm
 from my_router.models import Device, Router
-from my_router.utils import (StyledModelForm,
+from my_router.utils import (StyledForm, StyledModelForm,
+                             find_data_with_id_from_list_of_dict,
                              get_router_all_devices_mac_cache_key,
                              get_router_device_cache_key)
 
@@ -119,7 +120,7 @@ class DeviceForm(StyledModelForm):
 
         if not has_error:
             self.helper.add_input(
-                Submit("submit", _("Submit"), css_class="pc-submit-btn"))
+                Submit("submit", _("Submit"), css_class="bc-submit-btn"))
 
     def clean_added_datetime(self):
         return self.initial['added_datetime']
@@ -751,6 +752,142 @@ def delete_acl_l7(request, router_id, acl_l7_id):
         return HttpResponseForbidden()
     try:
         rd_manager.ikuai_client.del_acl_l7(acl_l7_id)
+    except Exception as e:
+        return JsonResponse(
+            data={"error": f"{type(e).__name__}： {str(e)}"}, status=400)
+
+    fetch_new_info_save_and_set_cache(router=router)
+
+    return JsonResponse(data={"success": True})
+
+
+@login_required
+def list_mac_group(request, router_id):
+    return render(request, "my_router/mac_group-list.html", {
+        "router_id": router_id,
+        "form_description": _("List of mac groups"),
+    })
+
+
+class MacGroupEditForm(StyledForm):
+
+    def __init__(self, add_new, name_initial,
+                 apply_to_choices, apply_to_initial, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.fields["group_name"] = forms.CharField(
+            label=_("Group name"),
+            max_length=64, required=True,
+            initial=name_initial)
+
+        self.fields["apply_to"] = forms.MultipleChoiceField(
+            label=_("Apply to"),
+            choices=apply_to_choices, initial=apply_to_initial,
+            required=False
+        )
+
+        if add_new:
+            self.helper.add_input(
+                Submit("submit", _("Add"), css_class="bc-submit-btn"))
+        else:
+            self.helper.add_input(
+                Submit("submit", _("Update"), css_class="bc-submit-btn"))
+
+
+@login_required
+def edit_mac_group(request, router_id, group_id):
+    router = get_object_or_404(Router, id=router_id)
+    rd_manager = RouterDataManager(router_instance=router)
+
+    group_id = int(group_id)
+
+    is_add_new = group_id == -1
+    name_initial = ""
+    apply_to_initial = []
+    if not is_add_new:
+        try:
+            data_item = find_data_with_id_from_list_of_dict(
+                rd_manager.mac_groups_list["data"], group_id)
+        except ValueError:
+            raise Http404()
+
+        name_initial = data_item["group_name"]
+        apply_to_initial = data_item["addr_pool"].split(",")
+
+    apply_to_choices = []
+    all_devices = Device.objects.filter(router=router)
+    for d in all_devices:
+        apply_to_choices.append((d.mac, d.name or d.mac))
+
+    kwargs = dict(
+        add_new=is_add_new,
+        name_initial=name_initial,
+        apply_to_choices=apply_to_choices,
+        apply_to_initial=apply_to_initial)
+
+    form_description = _("Edit mac groups")
+    if is_add_new:
+        form_description = _("Add mac groups")
+    context = {
+        "router_id": router_id,
+        "form_description": form_description,
+        "router_mac_group_url": rd_manager.router_mac_group_url
+    }
+
+    if request.method == "POST":
+        kwargs.update(data=request.POST)
+        form = MacGroupEditForm(**kwargs)
+        context.update({"form": form})
+
+        if form.is_valid():
+            if not form.has_changed():
+                return render(request, "my_router/mac_group-page.html", context)
+
+            client_kwargs = dict(group_name=form.cleaned_data["group_name"],
+                                 addr_pools=form.cleaned_data["apply_to"])
+
+            try:
+                if is_add_new:
+                    result = rd_manager.ikuai_client.add_mac_group(**client_kwargs)
+                    messages.success(
+                        request,
+                        _("Successfully added mac group."))
+
+                    rd_manager.reset_property_cache()
+                    return HttpResponseRedirect(
+                        reverse(
+                            "mac_group-edit", args=(router_id, result["RowId"])))
+                else:
+                    client_kwargs.update(group_id=group_id)
+                    rd_manager.ikuai_client.edit_mac_group(**client_kwargs)
+                    messages.success(
+                        request, _("Successfully updated mac group."))
+
+            except Exception as e:
+                messages.add_message(
+                    request, messages.ERROR, f"{type(e).__name__}: {str(e)}")
+
+            finally:
+                rd_manager.reset_property_cache()
+                fetch_new_info_save_and_set_cache(router=router)
+
+    else:
+        form = MacGroupEditForm(**kwargs)
+        context.update({"form": form})
+
+    return render(request, "my_router/mac_group-page.html", context)
+
+
+@login_required
+def delete_mac_group(request, router_id, group_id):
+    router = get_object_or_404(Router, id=router_id)
+
+    rd_manager = RouterDataManager(router_instance=router)
+
+    if request.method != "POST":
+        return HttpResponseForbidden()
+    try:
+        rd_manager.ikuai_client.del_mac_group(group_id)
     except Exception as e:
         return JsonResponse(
             data={"error": f"{type(e).__name__}： {str(e)}"}, status=400)

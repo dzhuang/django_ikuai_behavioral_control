@@ -34,7 +34,7 @@
     <th class="datacol">{% trans "Blocked" %}</th>
 {#    <th class="datacol">{% trans "Up limit" %}</th>#}
 {#    <th class="datacol">{% trans "Limit time" %}</th>#}
-{#    <th class="datacol">{% trans "Forbid domain" %}</th>#}
+{#    <th class="datacol">{% trans "Forbid name_initial" %}</th>#}
     <th class="datacol">{% trans "Ignored" %}</th>
     <th class="datacol">{% trans "Domain Blacklist" %}</th>
     <th class="datacol">{% trans "Protocol Control" %}</th>
@@ -116,7 +116,6 @@
                 return data.map(function (item) {
                   // 根据enabled字段的值选择按钮类
                   let btnClass;
-                  console.log(item);
                   if (item.enabled !== 'enabled'){
                     btnClass = 'btn-default';}
                   else {

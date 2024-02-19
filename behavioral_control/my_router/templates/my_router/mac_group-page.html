@@ -1,0 +1,14 @@
+{% extends "generic-form-page.html" %}
+{% load i18n %}
+{% load static %}
+
+{% block head_assets_form_media %}
+  <script src="{% static 'admin/js/core.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+  <a class="btn btn-default" href="{% url "mac_group-list" router_id %}">{% trans "List of mac group" %}</a>
+  <a class="btn btn-default" href="{{ router_mac_group_url }}" target="_blank">{% trans "Edit mac group on router" %}</a>
+
+  {{ block.super }}
+{% endblock %}

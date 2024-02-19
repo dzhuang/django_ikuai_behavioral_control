@@ -50,4 +50,12 @@ urlpatterns = [
     path('router/<router_id>/protocol_control/<acl_l7_id>/delete/',
          views.delete_acl_l7, name="acl_l7-delete"),
 
+    path('router/<router_id>/mac_group/list/', views.list_mac_group,
+         name="mac_group-list"),
+
+    path('router/<router_id>/mac_group/<group_id>/edit/',
+         views.edit_mac_group, name="mac_group-edit"),
+
+    path('router/<router_id>/mac_group/<group_id>/delete/',
+         views.delete_mac_group, name="mac_group-delete"),
 ]

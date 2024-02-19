@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-02-19 10:14+0800\n"
+"POT-Creation-Date: 2024-02-19 21:35+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -204,6 +204,7 @@ msgstr "{router}上的{device}"
 msgid "must be 0 or 1, while got {data}."
 msgstr "必须为0或1，而得到的是{data}."
 
+#, python-brace-format
 msgid "must be 'no' or 'yes', while got {data}."
 msgstr "必须为‘no’或'yes'，而得到的是{data}."
 
@@ -300,6 +301,21 @@ msgstr "删除"
 msgid "List of Domain Blacklist"
 msgstr "域名黑名单列表"
 
+msgid "List of mac groups"
+msgstr "MAC分组列表"
+
+msgid "Add mac group"
+msgstr "添加MAC分组"
+
+msgid "Group Name"
+msgstr "分组名"
+
+msgid "List of mac group"
+msgstr "MAC分组列表"
+
+msgid "Edit mac group on router"
+msgstr "从路由器上编辑MAC分组信息"
+
 msgid "List of Protocol control"
 msgstr "协议控制列表"
 
@@ -318,9 +334,19 @@ msgstr "动作"
 msgid "Priority"
 msgstr "优先级"
 
+msgid "MAC Group"
+msgstr "MAC分组"
+
+msgid "Mac Group"
+msgstr "MAC分组"
+
 #, python-brace-format
 msgid "Update Device {device_name}"
 msgstr "更新设备设置 {device_name}"
+
+#, python-format
+msgid "The device is the only element in group '%s' and can't be removed."
+msgstr "这个设备在组'%s'中只有一个元素，不能移除"
 
 msgid "Successfully updated device."
 msgstr "成功更新了设备."
@@ -363,3 +389,18 @@ msgstr "成功添加了协议控制."
 
 msgid "Successfully updated acl_l7 (protocol control)."
 msgstr "成功更新了协议控制."
+
+msgid "Group name"
+msgstr "分组名称"
+
+msgid "Edit mac groups"
+msgstr "编辑MAC分组"
+
+msgid "Add mac groups"
+msgstr "添加MAC分组"
+
+msgid "Successfully added mac group."
+msgstr "成功添加了MAC分组."
+
+msgid "Successfully updated mac group."
+msgstr "成功更新了MAC分组."

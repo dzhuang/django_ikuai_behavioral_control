@@ -1,0 +1,136 @@
+{% extends "my_router/router_base.html" %}
+
+{% load i18n %}
+
+{% load static %}
+
+{% block title %}
+  {% trans "List of mac groups" %}
+{% endblock %}
+
+{% block header_extra %}
+  {% include "datatables-header.html" %}
+{% endblock %}
+
+{% block content %}
+  <h1>{% trans "List of mac groups" %}</h1>
+
+      <a class="btn btn-default" href="{% url "mac_group-edit" router_id "-1" %}">{% trans "Add mac group" %}</a>
+
+  <table class="table table-striped mac_group-all">
+    <thead>
+    <th class="datacol">{% trans "ID" %}</th>
+    <th class="datacol">{% trans "Group Name" %}</th>
+    <th class="datacol">{% trans "Actions" %}</th>
+    <th class="datacol">{% trans "Apply to" %}</th>
+    </thead>
+  </table>
+{% endblock %}
+
+{% block page_bottom_javascript_extra %}
+  {% get_current_js_lang_name as LANG %}
+  <script type="text/javascript">
+    var tbl = $("table.mac_group-all").DataTable({
+      "ajax": {
+        url: '{% url "fetch-cached-info" router_id "mac_group" %}',
+        dataSrc: ""
+      },
+      columns: [
+        {data: "id"},
+        {data: "group_name"},
+        {
+          "data": "edit-url",
+          "render": function (data, type, row, meta) {
+            if (type === 'display') {
+              return "<a class='btn btn-default btn-sm' href='" + data + "'> {% trans 'Edit' %} </a>" +
+                "<button class='btn btn-danger btn-sm remove-item' data-url='" + row["delete-url"] + "' onclick='removeItem(event);'> {% trans 'Delete' %} </button>"
+            }
+            return data;
+          }
+        },
+        { "data": "apply_to",
+          "render": function (data, type, row) {
+            if (type === 'display') {
+              if (Array.isArray(data) && data.length) {
+                return data.map(function (item) {
+                  let name = !item.name ? "unknown" : item.name;
+                  return '<a href="' + item.edit_url + '" class="btn btn-sm btn-default">' + name + '</a>';
+                }).join(" ");
+              }
+              return "";
+            }
+            return ""
+          }
+        },
+      ],
+      "scrollCollapse": true,
+      "paging": false,
+      "ordering": true,
+      "language": {url: '{% static "datatables-i18n/i18n/" %}{{LANG}}.json'},
+    });
+  </script>
+
+  {% comment %}
+    <script type="text/javascript">
+        var tbl = $("table.mac_group-all").DataTable({
+            "ajax": {
+                url: '{% url "fetch-cached-info" router_id "mac_group" %}',
+                dataSrc: function (data) {
+                    const names = [
+                        "index_on_router", "name_initial", "apply_to"];
+                    let retArray = [];
+                    for (let item of data) {
+                        let subarray = [];
+                        for (let i = 0; i < names.length; i++) {
+                            subarray.push(item[names[i]]);
+                        }
+                        subarray.splice(2, 0, [item["edit_url"], item["delete_url"]])
+                        retArray.push(subarray);
+                    }
+                    return retArray
+                },
+                columns: [
+                    {data: "id"},
+                    {data: "name_initial"},
+                    {data: "action"},
+                    {data: "apply_to"},
+                ],
+            },
+            columnDefs: [
+                {
+                    targets: 2,
+                    render: function (data, type, row, meta) {
+                        if (type === 'display') {
+                            return "<a class='btn btn-default btn-sm' href='" + data[0] + "'> {% trans 'Edit' %} </a> " +
+                                "<button class='btn btn-danger btn-sm remove-item' data-url='" + data[1] + "' onclick='removeItem(event);'> {% trans 'Delete' %} </button>"
+                        }
+                        return data;
+                    }
+                },
+                {
+                    targets: 3,
+                    render: function (data, type, row, meta) {
+                        if (type === 'display') {
+                            var html = ""
+                            for (let i = 0, len = data.length; i < len; i++) {
+                                html += "<a class='btn btn-default btn-sm' href='" + data[i]["url"] + "'>" + data[i]["name"] + "</a>";
+                            }
+                            return html
+                        }
+                        var names = ""
+                        for (let i = 0, len = data.length; i < len; i++) {
+                            names += '<a "class=btn" href="' + data[i]["name"] + '"></a>';
+                        }
+                        return names
+                    }
+                }
+            ],
+            "scrollCollapse": true,
+            "paging": false,
+            "ordering": true,
+            "language": {url: '{% static "datatables-i18n/i18n/" %}{{LANG}}.json'},
+        });
+    </script>
+    {% endcomment %}
+  {{ block.super }}
+{% endblock %}

@@ -92,7 +92,9 @@ class MacAddressField(serializers.Field):
 class DeviceModelSerializer(serializers.ModelSerializer):
     class Meta:
         model = Device
-        fields = ["name", "mac", "known", "ignore", "added_datetime"]
+        fields = ["name", "mac", "known", "ignore", "added_datetime", "edit_url"]
+
+    edit_url = serializers.SerializerMethodField()
 
     def create(self, validated_data):
         """
@@ -118,6 +120,14 @@ class DeviceModelSerializer(serializers.ModelSerializer):
         instance.ignore = validated_data.get('ignore', instance.ignore)
         instance.save()
         return instance
+
+    def get_edit_url(self, obj):
+        return reverse(
+            "device-edit",
+            kwargs={
+                "router_id": obj.router.id,
+                "pk": obj.id
+            })
 
 
 class DeviceJsonSerializer(serializers.Serializer):  # noqa
@@ -288,6 +298,45 @@ class AclL7RuleSerializer(ValidateMixin, serializers.Serializer):  # noqa
             ret[k] = v
 
         return ret
+
+
+class MacGroupRuleSerializer(serializers.Serializer):  # noqa
+    id = serializers.IntegerField()
+    addr_pool = serializers.CharField(allow_blank=True)
+    comment = serializers.CharField(allow_blank=True)
+    group_name = serializers.CharField()
+
+    def get_datatable_data(self, router_id):
+        new_data = deepcopy(self.validated_data)
+
+        ret = dict()
+        ret["apply_to"] = new_data.pop("addr_pool", "").split(",")
+        if ret["apply_to"] == ['']:
+            ret["apply_to"] = []
+
+        ret["edit-url"] = reverse(
+            "mac_group-edit",
+            kwargs={
+                "router_id": router_id,
+                "group_id": new_data["id"]})
+
+        ret["delete-url"] = reverse(
+            "mac_group-delete",
+            kwargs={
+                "router_id": router_id,
+                "group_id": new_data["id"]})
+
+        for k, v in new_data.items():
+            ret[k] = v
+
+        return ret
+
+
+class ResultMacGroupRulesSerializer(serializers.Serializer):
+    # IKuaiClient list_mac_groups() result
+
+    total = serializers.IntegerField()
+    data = MacGroupRuleSerializer(many=True)
 
 
 class ResultProtocolRulesSerializer(serializers.Serializer):

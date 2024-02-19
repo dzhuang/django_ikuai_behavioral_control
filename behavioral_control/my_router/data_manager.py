@@ -10,6 +10,7 @@ from my_router.serializers import (AclL7RuleSerializer, DeviceModelSerializer,
                                    DeviceParseSerializer,
                                    DeviceWithRuleParseSerializer,
                                    DomainBlackListSerializer,
+                                   MacGroupRuleSerializer,
                                    ResultDomainBlackListSerializer,
                                    ResultlistMacGroupsSerializer,
                                    ResultListMonitorLANIPSerializer,
@@ -426,11 +427,15 @@ class RouterDataManager:
 
     @property
     def router_domain_blacklist_url(self):
-        return urljoin(self.router_instance.url, "#/behavior/banned-site")
+        return urljoin(self.router_instance.url, "/#/behavior/banned-site")
 
     @property
     def router_protocol_control_url(self):
-        return urljoin(self.router_instance.url, "#/behavior/pro-control")
+        return urljoin(self.router_instance.url, "/#/behavior/pro-control")
+
+    @property
+    def router_mac_group_url(self):
+        return urljoin(self.router_instance.url, "/#/behavior/mac-group")
 
     def get_url_black_view_data(self):
         url_black = deepcopy(self.url_black_list)
@@ -466,9 +471,40 @@ class RouterDataManager:
 
         return list(acl_l7_list_data.values())
 
+    def get_mac_groups_data(self):
+        mac_groups = deepcopy(self.mac_groups_list["data"])
+
+        ret = {}
+        for m_group in mac_groups:
+            group_id = int(m_group["id"])
+            serializer = MacGroupRuleSerializer(data=m_group)
+            if not serializer.is_valid():
+                continue
+
+            ret[group_id] = serializer.get_datatable_data(self.router_id)
+
+        return ret
+
+    def get_mac_group_list_for_view(self):
+        mac_groups_data = self.get_mac_groups_data()
+        mac_groups_list = list(mac_groups_data.values())
+        for mac_group in mac_groups_list:
+            exist_macs = mac_group["apply_to"]
+
+            devices = Device.objects.filter(
+                router=self.router_instance, mac__in=exist_macs)
+
+            macs = []
+            for device in devices:
+                serializer = DeviceModelSerializer(instance=device)
+                macs.append(serializer.data)
+            mac_group["apply_to"] = macs
+
+        return mac_groups_list
+
     def get_view_data(self, info_name):
         assert info_name in [
-            "device", "domain_blacklist", "url_black", "acl_l7"]
+            "device", "domain_blacklist", "url_black", "acl_l7", "mac_group"]
 
         if info_name == "device":
             return self.get_device_view_data()
@@ -476,8 +512,12 @@ class RouterDataManager:
         elif info_name == "domain_blacklist":
             return self.get_domain_blacklist_list_for_view()
 
+        # todo: not implemented yet
         elif info_name == "url_black":
             return self.get_url_black_view_data()
 
         elif info_name == "acl_l7":
             return self.get_acl_l7_list_for_view()
+
+        elif info_name == "mac_group":
+            return self.get_mac_group_list_for_view()

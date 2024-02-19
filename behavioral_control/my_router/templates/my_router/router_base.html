@@ -5,12 +5,12 @@
 {% load static %}
 
 {% block navbar %}
-    {{ block.super }}
-    <li>
-        <a href="{% url "domain_blacklist-list" router_id %}">{% trans "Domain Blacklist" %}</a>
-    </li>
-    <li>
-        <a href="{% url "acl_l7-list" router_id %}">{% trans "Protocol Control" %}</a>
-    </li>
-
+  {{ block.super }}
+  <li>
+    <a href="{% url "domain_blacklist-list" router_id %}">{% trans "Domain Blacklist" %}</a>
+  </li>
+  <li>
+    <a href="{% url "acl_l7-list" router_id %}">{% trans "Protocol Control" %}</a>
+  </li>
+  <li><a href="{% url "mac_group-list" router_id %}">{% trans "MAC Group" %}</a></li>
 {% endblock %}
