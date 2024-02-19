@@ -1,0 +1,365 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-02-19 10:14+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#, fuzzy
+#| msgid "Parent Control"
+msgid "Behavioral Control"
+msgstr "行为管控"
+
+msgid "Staff"
+msgstr "管理员"
+
+msgid "Admin site"
+msgstr "管理网站"
+
+#, python-format
+msgid "Signed in as %(username)s"
+msgstr "登录为 %(username)s"
+
+msgid "Sign in"
+msgstr "登录"
+
+msgid "See you!"
+msgstr "再见！"
+
+msgid "Logged out"
+msgstr "已退出登录"
+
+msgid "You have been successfully logged out."
+msgstr "您已成功退出登录."
+
+msgid "Log in"
+msgstr "登录"
+
+msgid "Submit"
+msgstr "提交"
+
+msgid "Sign out"
+msgstr "退出登录"
+
+msgid "User Profile"
+msgstr "用户信息"
+
+msgid "Active"
+msgstr "可用"
+
+msgid "Disabled"
+msgstr "已停用"
+
+msgid "Monday"
+msgstr ""
+
+msgid "Tuesday"
+msgstr ""
+
+msgid "Wednesday"
+msgstr ""
+
+msgid "Thursday"
+msgstr ""
+
+msgid "Friday"
+msgstr ""
+
+msgid "Saturday"
+msgstr ""
+
+msgid "Sunday"
+msgstr ""
+
+msgid "Enter a valid MAC address."
+msgstr "请输入一个有效的MAC地址"
+
+msgid "Name"
+msgstr "名称"
+
+msgid "Start time"
+msgstr "开始时间"
+
+msgid "length"
+msgstr "时长"
+
+msgid "Length of time in minutes"
+msgstr "以分钟计的时长"
+
+msgid "End time"
+msgstr "结束时间"
+
+msgid "Weekdays"
+msgstr ""
+
+msgid "Apply to"
+msgstr "应用于"
+
+msgid "Enabled"
+msgstr "已启用"
+
+msgid "Add"
+msgstr "添加"
+
+msgid "Update"
+msgstr "更新"
+
+msgid "\"end_time\" should be greater than \"start_time\""
+msgstr "\"end_time\" 应大于 \"start_time\""
+
+msgid "Router name"
+msgstr "路由器名称"
+
+msgid "Description"
+msgstr "描述"
+
+msgid "The admin URL of the router"
+msgstr "该路由器管理页面的URL"
+
+msgid "Admin username"
+msgstr "管理员用户名"
+
+msgid "Admin username of the iKuai router"
+msgstr "该爱快路由器管理员的用户名"
+
+msgid "Admin password"
+msgstr "管理员密码"
+
+msgid "Admin password of the iKuai router"
+msgstr "该爱快路由器管理员的密码"
+
+msgid "iKuai version"
+msgstr "爱快的版本"
+
+msgid "Router status"
+msgstr "路由器状态"
+
+msgid "This determines whether remote information will be fetched periodically"
+msgstr "这决定了远程信息是否会间歇性的抓取"
+
+msgid "Fetch interval"
+msgstr "抓取间隔"
+
+msgid ""
+"The interval of the app to fetch the information on the router, in seconds"
+msgstr "此app抓取路由器信息的时间间隔，单位为秒"
+
+msgid "Router"
+msgstr "路由器"
+
+msgid "Routers"
+msgstr "路由器"
+
+msgid "Fetch info and set cache"
+msgstr "抓取信息并缓存"
+
+msgid "Device name"
+msgstr "设备名称"
+
+msgid "MAC address"
+msgstr "MAC地址"
+
+msgid "Router connected"
+msgstr "连接的路由器"
+
+msgid "Known device"
+msgstr "已知"
+
+msgid "This devices is known."
+msgstr "该设备是已知的."
+
+msgid "Ignored device"
+msgstr "忽略"
+
+msgid "This device will be ignored when listing and bulk applying constraints."
+msgstr "该设备将不会在默认列表中列出，也不会在应用规则时列出."
+
+msgid "Added datetime"
+msgstr "添加的时间"
+
+msgid "Device"
+msgstr "设备"
+
+msgid "Devices"
+msgstr "设备"
+
+#, python-brace-format
+msgid "{device} on {router}"
+msgstr "{router}上的{device}"
+
+#, python-brace-format
+msgid "must be 0 or 1, while got {data}."
+msgstr "必须为0或1，而得到的是{data}."
+
+msgid "must be 'no' or 'yes', while got {data}."
+msgstr "必须为‘no’或'yes'，而得到的是{data}."
+
+msgid "Done"
+msgstr "完成"
+
+msgid "List of devices"
+msgstr "设备列表"
+
+msgid "Offline only"
+msgstr "仅离线设备"
+
+msgid "Blocked only"
+msgstr "仅被禁止的设备"
+
+msgid "Skip ignored"
+msgstr "不列出忽略的设备"
+
+msgid "ID"
+msgstr ""
+
+msgid "Name of device"
+msgstr "设备名"
+
+msgid "Actions"
+msgstr "行动"
+
+msgid "IP"
+msgstr ""
+
+msgid "Mac"
+msgstr ""
+
+msgid "Online"
+msgstr "在线"
+
+msgid "Last seen"
+msgstr ""
+
+msgid "Blocked"
+msgstr "禁用"
+
+msgid "Ignored"
+msgstr "忽略"
+
+msgid "Domain Blacklist"
+msgstr "域名黑名单"
+
+msgid "Protocol Control"
+msgstr "协议控制"
+
+msgid "Edit"
+msgstr "编辑"
+
+msgid "Edit Device"
+msgstr "编辑设备"
+
+msgid "List of Domain blacklist"
+msgstr "域名黑名单列表"
+
+msgid "Add Domain blacklist"
+msgstr "添加域名黑名单"
+
+msgid "Edit Domain blacklist on router"
+msgstr "从路由器上编辑域名黑名单信息"
+
+msgid "Domain Group"
+msgstr "域名组"
+
+msgid "Mon"
+msgstr ""
+
+msgid "Tue"
+msgstr ""
+
+msgid "Wed"
+msgstr ""
+
+msgid "Thu"
+msgstr ""
+
+msgid "Fri"
+msgstr ""
+
+msgid "Sat"
+msgstr ""
+
+msgid "Sun"
+msgstr ""
+
+msgid "Delete"
+msgstr "删除"
+
+msgid "List of Domain Blacklist"
+msgstr "域名黑名单列表"
+
+msgid "List of Protocol control"
+msgstr "协议控制列表"
+
+msgid "Edit Protocol control selection on router"
+msgstr "在路由器上编辑协议控制选择"
+
+msgid "Add Protocol control"
+msgstr "添加协议控制"
+
+msgid "Protocol control"
+msgstr "协议控制"
+
+msgid "How"
+msgstr "动作"
+
+msgid "Priority"
+msgstr "优先级"
+
+#, python-brace-format
+msgid "Update Device {device_name}"
+msgstr "更新设备设置 {device_name}"
+
+msgid "Successfully updated device."
+msgstr "成功更新了设备."
+
+msgid "Domain Groups"
+msgstr "域名组"
+
+msgid "Edit Domain Blacklist"
+msgstr "编辑域名黑名单"
+
+msgid "Add Domain Blacklist"
+msgstr "添加域名黑名单"
+
+msgid "Successfully added domain blacklist."
+msgstr "成功添加了域名黑名单."
+
+msgid "Successfully updated domain blacklist."
+msgstr "成功更新了域名黑名单."
+
+msgid "Failed to update domain blacklist: "
+msgstr "更新域名黑名单失败: "
+
+msgid "APP protocols"
+msgstr "应用协议"
+
+msgid "Action"
+msgstr "操作"
+
+msgid "Lower in value means higher priority"
+msgstr "数值越小优先级越高"
+
+msgid "Edit Protocol Control"
+msgstr "编辑协议控制"
+
+msgid "Add Protocol Control"
+msgstr "添加协议控制"
+
+msgid "Successfully added acl_l7 (protocol control)."
+msgstr "成功添加了协议控制."
+
+msgid "Successfully updated acl_l7 (protocol control)."
+msgstr "成功更新了协议控制."
