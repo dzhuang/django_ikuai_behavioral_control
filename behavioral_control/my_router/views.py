@@ -685,6 +685,7 @@ class ACLL7EditView(AddEditViewMixin, FormView):
 
         if not self.is_add_new:
             extra_kwargs["initial_action"] = self.data_item["action"]
+            extra_kwargs["initial_priority"] = self.data_item["prio"]
 
         return extra_kwargs
 
