@@ -1,0 +1,79 @@
+name: Run Tests
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '!**.png'
+      - '!**.jpg'
+      - '!**.jpeg'
+      - '!**.md'
+      - '!**.rst'
+      - '!**.ipynb'
+      - '!docker-compose-example.yml'
+      - 'behavioral_control/**'
+      - 'Dockerfile'
+  pull_request:
+    paths:
+      - '!**.png'
+      - '!**.jpg'
+      - '!**.jpeg'
+      - '!**.md'
+      - '!**.rst'
+      - '!**.ipynb'
+      - '!docker-compose-example.yml'
+      - 'behavioral_control/**'
+      - 'Dockerfile'
+
+  schedule:
+    - cron: "0 5 * * 0"
+
+jobs:
+  pytest:
+    name: Python ${{ matrix.python-version }} / Django ${{ matrix.django-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.9]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Setup redis
+        uses: supercharge/redis-github-action@1.2.0
+        with:
+          redis-version: 6
+
+      - name: Install Dependencies
+        working-directory: ./behavioral_control
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r tests/requirements_test.txt
+          npm install
+      - name: Install OS dependencies
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -qq gettext
+      - name: Run pytest
+        working-directory: ./behavioral_control
+        run: |
+          pytest --cov-report=xml --cov=.
+      - name: Test make and compile messages
+        working-directory: ./behavioral_control
+        env:
+          PARENT_CONTROL_FETCH_INFO_INTERVAL: tests/settings_for_tests.py
+        run: |
+          python manage.py makemessages -l zh_Hans
+          python manage.py compilemessages
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v2
+        with:
+          name: ${{ matrix.python-version }} / Django ${{ matrix.django-version }}
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
+          verbose: true
