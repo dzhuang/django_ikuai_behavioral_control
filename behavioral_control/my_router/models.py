@@ -72,7 +72,7 @@ class Router(models.Model):
 
     def setup_task(self):
         self.task = PeriodicTask.objects.create(
-            name=_("Fetch info and set cache"),
+            name=_("Fetch info and set cache for %s") % self.name,
             task="fetch_devices_and_set_cache",
             interval=self.interval_schedule,
             args=json.dumps([self.id]),

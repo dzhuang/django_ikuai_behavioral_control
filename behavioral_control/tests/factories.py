@@ -42,8 +42,10 @@ class UserFactory(factory.django.DjangoModelFactory):
 class RouterFactory(factory.django.DjangoModelFactory):
     name = factory.Sequence(lambda n: "router_%02d" % n)
     description = factory.Faker('name')
-    url = "http://fake_url.net"
-    admin_password = "foo"
+    admin_username = factory.Faker('name')
+    url = factory.Sequence(lambda n: "http://testrouter%d.com" % n)
+    admin_password = factory.Faker('name')
+    fetch_interval = factory.Faker('random_int', min=0, max=100)
 
     class Meta:
         model = Router
