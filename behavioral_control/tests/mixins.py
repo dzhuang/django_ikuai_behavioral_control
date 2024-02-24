@@ -181,48 +181,13 @@ class MockRouterClientMixin:
             mock_fetch_and_cache.return_value = None
             self.router = RouterFactory()
 
-        get_restructured_info_dicts_patch = mock.patch(
-            "my_router.models.RouterClient.get_restructured_info_dicts")
-        self.mock_get_restructured_info_dicts = (
-            get_restructured_info_dicts_patch.start())
-        self.addCleanup(get_restructured_info_dicts_patch.stop)
+        get_ikuai_client_patch = mock.patch(
+            "my_router.models.IKuaiClient.__init__", return_value=None)
 
-        set_host_info_patch = mock.patch(
-            "my_router.models.RouterClient.set_host_info")
-        self.mock_set_host_info = set_host_info_patch.start()
-        self.addCleanup(set_host_info_patch.stop)
+        self.mock_get_ikuai_client_patch = (
+            get_ikuai_client_patch.start())
 
-        add_limit_time_patch = mock.patch(
-            "my_router.models.RouterClient.add_limit_time")
-        self.mock_add_limit_time = add_limit_time_patch.start()
-        self.addCleanup(add_limit_time_patch.stop)
-
-        add_forbid_domain_patch = mock.patch(
-            "my_router.models.RouterClient.add_forbid_domain")
-        self.mock_add_forbid_domain = add_forbid_domain_patch.start()
-        self.addCleanup(add_forbid_domain_patch.stop)
-
-        delete_limit_time_patch = mock.patch(
-            "my_router.models.RouterClient.delete_limit_time")
-        self.mock_delete_limit_time = delete_limit_time_patch.start()
-        self.addCleanup(delete_limit_time_patch.stop)
-
-        delete_forbid_domain_patch = mock.patch(
-            "my_router.models.RouterClient.delete_forbid_domain")
-        self.mock_delete_forbid_domain = delete_forbid_domain_patch.start()
-        self.addCleanup(delete_forbid_domain_patch.stop)
-
-    def set_get_restructured_info_dicts_ret(self, result):
-        # mock client.get_restructured_info_dicts return_value
-        self.mock_get_restructured_info_dicts.return_value = result
-
-    def set_get_restructured_info_dicts_side_effect(self, func=lambda x: None):
-        # mock client.get_restructured_info_dicts side_effect
-        self.mock_get_restructured_info_dicts.side_effect = func  # noqa
-
-    def set_set_host_info_side_effect(self, func=lambda x: None):
-        # mock client.set_host_info
-        self.mock_set_host_info.side_effect = func  # noqa
+        self.addCleanup(get_ikuai_client_patch.stop)
 
     def fetch_cached_info_url(self, info_name="device", router_id=None):
         router_id = router_id or self.router.id
