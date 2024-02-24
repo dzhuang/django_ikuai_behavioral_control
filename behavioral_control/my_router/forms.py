@@ -46,8 +46,7 @@ class BaseEditForm(StyledFormMixin, forms.Form):
         }
 
     def __init__(self, add_new, name, start_time, end_time,
-                 days, apply_to_choices, apply_to_initial, enabled,
-                 *args, **kwargs):
+                 days, enabled, *args, **kwargs):
         weekdays_field_name = kwargs.pop("weekdays_field_name", "weekdays")
         super().__init__(*args, **kwargs)
 
@@ -81,12 +80,6 @@ class BaseEditForm(StyledFormMixin, forms.Form):
             choices=DAYS_CHOICES,
             required=False,
             widget=SelectDay
-        )
-
-        self.fields["apply_to"] = forms.MultipleChoiceField(
-            label=_("Apply to"),
-            choices=apply_to_choices, initial=apply_to_initial,
-            required=False
         )
 
         self.fields["enabled"] = forms.BooleanField(
@@ -135,3 +128,17 @@ class BaseEditForm(StyledFormMixin, forms.Form):
             cleaned_data[self.weekdays_field_name], reverse_=True)
 
         return cleaned_data
+
+
+class BaseEditWithApplyToForm(BaseEditForm):
+    def __init__(self, add_new, name, start_time, end_time,
+                 days, apply_to_choices, apply_to_initial, enabled,
+                 *args, **kwargs):
+        super().__init__(add_new, name, start_time, end_time,
+                         days, enabled, *args, **kwargs)
+
+        self.fields["apply_to"] = forms.MultipleChoiceField(
+            label=_("Apply to"),
+            choices=apply_to_choices, initial=apply_to_initial,
+            required=False
+        )

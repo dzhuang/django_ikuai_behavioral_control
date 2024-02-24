@@ -18,7 +18,7 @@ from django.views.generic.edit import FormView, UpdateView
 
 from my_router.constants import DEFAULT_CACHE
 from my_router.data_manager import RouterDataManager
-from my_router.forms import BaseEditForm
+from my_router.forms import BaseEditWithApplyToForm
 from my_router.models import Device, Router
 from my_router.utils import (StyledForm, StyledModelForm,
                              find_data_with_id_from_list_of_dict,
@@ -337,7 +337,7 @@ def list_devices(request, router_id):
     })
 
 
-class DomainBlacklistEditForm(BaseEditForm):
+class DomainBlacklistEditForm(BaseEditWithApplyToForm):
     def __init__(self, domain_group_choices,
                  init_domain_group=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -400,6 +400,7 @@ class AddEditViewMixin(LoginRequiredMixin):
     # success_url_name = "domain_blacklist-edit"
     # form_description_for_edit = _("Edit Domain Blacklist")
     # form_description_for_add = _("Add Domain Blacklist")
+    # has_apply_to = True
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -469,11 +470,10 @@ class AddEditViewMixin(LoginRequiredMixin):
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
 
-        apply_to_choices = self.get_apply_to_choices()
+        has_apply_to = getattr(self, "has_apply_to", True)
 
         kwargs.update({
             'add_new': self.is_add_new,
-            'apply_to_choices': apply_to_choices,
             'weekdays_field_name': self.form_weekdays_field_name
         })
 
@@ -484,7 +484,6 @@ class AddEditViewMixin(LoginRequiredMixin):
                 'end_time': turn_str_time_to_time_obj("23:59"),
                 'days': ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
                 'enabled': True,
-                'apply_to_initial': []
             })
         else:
             kwargs.update({
@@ -495,10 +494,19 @@ class AddEditViewMixin(LoginRequiredMixin):
                     self.data_item.get("end_time")),
                 'days': self.data_item["days"],
                 'enabled': self.data_item["enabled"],
-                'apply_to_initial': (
+            })
+
+        if has_apply_to:
+            apply_to_choices = self.get_apply_to_choices()
+            kwargs['apply_to_choices'] = apply_to_choices
+
+            if self.is_add_new:
+                kwargs['apply_to_initial'] = []
+
+            else:
+                kwargs['apply_to_initial'] = (
                     self.data_item["apply_to"]
                     if self.data_item["apply_to"] != [''] else [])
-            })
 
         kwargs.update(self.get_extra_form_kwargs())
         return kwargs
@@ -615,7 +623,7 @@ class DomainBlacklistEditView(AddEditViewMixin, FormView):
                 self.rd_manager.router_domain_blacklist_url}
 
 
-class ACLL7EditForm(BaseEditForm):
+class ACLL7EditForm(BaseEditWithApplyToForm):
     def __init__(self, protocols_choices, initial_protocols=None,
                  initial_action="accept",
                  initial_priority=28, *args, **kwargs):
