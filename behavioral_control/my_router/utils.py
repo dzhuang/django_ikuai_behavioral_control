@@ -7,6 +7,7 @@ from my_router.constants import (
     ROUTER_ACL_L7_LIST_CACHE_KEY_PATTERN, ROUTER_DEVICE_CACHE_KEY_PATTERN,
     ROUTER_DEVICE_MAC_ADDRESSES_CACHE_KEY_PATTERN,
     ROUTER_DEVICE_MAC_GROUPS_LIST_CACHE_KEY_PATTERN,
+    ROUTER_DEVICES_BLOCK_MAC_BY_ACL_L7_CACHE_KEY_PATTERN,
     ROUTER_DEVICES_CACHE_KEY_PATTERN,
     ROUTER_DOMAIN_BLACKLIST_CACHE_KEY_PATTERN,
     ROUTER_URL_BLACK_LIST_CACHE_KEY_PATTERN, days_const)
@@ -57,6 +58,11 @@ def get_router_all_devices_mac_cache_key(router_id):
 
 def get_device_list_cache_key(router_id):
     return ROUTER_DEVICES_CACHE_KEY_PATTERN.format(
+        router_id=router_id, cache_version=CACHE_VERSION)
+
+
+def get_block_mac_by_acl_l7_cache_key(router_id):
+    return ROUTER_DEVICES_BLOCK_MAC_BY_ACL_L7_CACHE_KEY_PATTERN.format(
         router_id=router_id, cache_version=CACHE_VERSION)
 
 

@@ -123,7 +123,7 @@
                   }
 
                   // 返回带有相应类的按钮HTML字符串
-                  return '<a href="' + item.url + '" class="btn btn-sm ' + btnClass + '">' + item.name + '</a>';
+                  return '<a href="' + item["edit-url"] + '" class="btn btn-sm ' + btnClass + '">' + item.name + '</a>';
                 }).join(" "); // 使用空格分隔每个按钮
               }
               return ""; // 如果data不是期望的数组，返回空字符串

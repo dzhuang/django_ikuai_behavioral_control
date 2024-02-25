@@ -6,6 +6,9 @@ DEFAULT_CACHE = cache.caches["default"]
 
 ROUTER_DEVICES_CACHE_KEY_PATTERN = "router-instance:{router_id}{cache_version}"
 
+ROUTER_DEVICES_BLOCK_MAC_BY_ACL_L7_CACHE_KEY_PATTERN = (
+    "{router_id}:block_mac_by_acl_l7:{cache_version}")
+
 ROUTER_DEVICE_MAC_ADDRESSES_CACHE_KEY_PATTERN = (
     "{router_id}:mac_addresses:{cache_version}")
 ROUTER_DEVICE_CACHE_KEY_PATTERN = "{router_id}:device:{mac}{cache_version}"

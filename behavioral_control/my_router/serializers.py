@@ -504,13 +504,17 @@ class DeviceWithRuleParseSerializer(DeviceParseSerializer):
                 for item in items:
                     ret["acl_l7"].append({
                         "name": item["comment"] or "unknown",
-                        "url": reverse(
+                        "app_proto": item["app_proto"],
+                        "edit-url": reverse(
                             "acl_l7-edit",
                             kwargs={
                                 "router_id": device_instance.router.id,
                                 "acl_l7_id": item["id"]}),
-                        "enabled": enabled,
-                        "action": item["action"]
+                        "enabled": enabled == "enabled",
+                        "action": item["action"],
+                        "weekdays": item["week"],
+                        "time": item["time"],
+                        "priority": item["prio"]
                     })
 
         for k, v in new_data.items():

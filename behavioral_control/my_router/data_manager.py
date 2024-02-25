@@ -1,10 +1,13 @@
+import hashlib
+import json
 from collections import defaultdict
 from copy import deepcopy
+from datetime import datetime
 from urllib.parse import urljoin
 
-from django.utils.timezone import now
+from django.utils import timezone
 
-from my_router.constants import DEFAULT_CACHE
+from my_router.constants import CACHE_VERSION, DEFAULT_CACHE
 from my_router.models import Device
 from my_router.serializers import (AclL7RuleSerializer, DeviceModelSerializer,
                                    DeviceParseSerializer,
@@ -17,6 +20,7 @@ from my_router.serializers import (AclL7RuleSerializer, DeviceModelSerializer,
                                    ResultProtocolRulesSerializer,
                                    ResultURLBlackRulesSerializer)
 from my_router.utils import (get_acl_l7_list_cache_key,
+                             get_block_mac_by_acl_l7_cache_key,
                              get_device_db_cache_key,
                              get_device_list_cache_key,
                              get_domain_blacklist_cache_key,
@@ -24,6 +28,131 @@ from my_router.utils import (get_acl_l7_list_cache_key,
                              get_router_all_devices_mac_cache_key,
                              get_router_device_cache_key,
                              get_url_black_list_cache_key)
+
+
+def split_and_identify_dominant_strategies_weekly_future(
+        data, future_days=7):
+
+    data = [d for d in data if d["enabled"] is True]
+
+    # 生成未来7天的日期列表
+    future_dates = [timezone.now().date() + timezone.timedelta(days=i)
+                    for i in range(future_days)]
+    future_weekdays = [(d.weekday() + 1) % 7 + 1 for d in future_dates]
+
+    # 将Python的weekday转换为1-7表示周一到周日
+    all_times = sorted(
+        set([time for d in data
+             for time in [d['time'].split('-')[0], d['time'].split('-')[1]]]))
+    time_ranges = [
+        (all_times[i], all_times[i+1])
+        for i in range(len(all_times)-1) if all_times[i] != all_times[i+1]]
+
+    # 按照未来7天处理
+    weekly_dominant_strategies = {str(day): [] for day in future_weekdays}
+
+    for idx, day in enumerate(future_weekdays):
+        for start, end in time_ranges:
+            start_dt = datetime.strptime(start, '%H:%M')
+            end_dt = datetime.strptime(end, '%H:%M')
+
+            # 在此时间段内的所有策略
+            strategies_in_range = [
+                d for d in data
+                if (str(day) in d['weekdays']
+                    and datetime.strptime(d['time'].split('-')[0], '%H:%M') < end_dt
+                    and datetime.strptime(d['time'].split('-')[1], '%H:%M') > start_dt)  # noqa
+            ]
+
+            if strategies_in_range:
+                # 选出此时间段优先级最高的策略
+                highest_priority_strategy = min(
+                    strategies_in_range, key=lambda x: x['priority'])
+                weekly_dominant_strategies[str(day)].append({
+                    'date': future_dates[idx].isoformat(),
+                    'time_range': f"{start}-{end}",
+                    'policy': highest_priority_strategy['name'],
+                    'priority': highest_priority_strategy['priority'],
+                    'action': highest_priority_strategy['action'],
+                    'app_proto': highest_priority_strategy['app_proto'],
+                })
+
+    # 将字典转换为列表
+    dominant_strategies_weekly_future = []
+    for strategies in weekly_dominant_strategies.values():
+        dominant_strategies_weekly_future.extend(strategies)
+
+    return dominant_strategies_weekly_future
+
+
+def filter_and_merge_strategies(data, future_days=7):
+    # 首先调用之前的函数获取未来几天的策略数据
+    strategies = split_and_identify_dominant_strategies_weekly_future(
+        data,
+        future_days)
+
+    print(strategies)
+
+    # 筛选出action为drop且'app_proto'为'所有协议'的结果
+    filtered_strategies = [
+        strategy for strategy in strategies
+        if strategy['action'] == 'drop' and strategy.get('app_proto') == '所有协议'
+    ]
+
+    # 合并连续的时间段
+    merged_strategies = []
+    for strategy in filtered_strategies:
+        if not merged_strategies:
+            merged_strategies.append(strategy)
+        else:
+            last_strategy = merged_strategies[-1]
+            last_end_time = last_strategy['time_range'].split('-')[1]
+            current_start_time = strategy['time_range'].split('-')[0]
+
+            # 如果时间段连续且在同一天内，则合并
+            if last_end_time == current_start_time and last_strategy['date'] == \
+                    strategy['date']:
+                new_time_range = (
+                    f"{last_strategy['time_range'].split('-')[0]}"
+                    f"-{strategy['time_range'].split('-')[1]}")
+                last_strategy['time_range'] = new_time_range
+            else:
+                merged_strategies.append(strategy)
+
+    # 转换日期为星期几
+    for strategy in merged_strategies:
+        strategy_date = datetime.strptime(strategy['date'], '%Y-%m-%d')
+        strategy['day'] = strategy_date.isoweekday()
+        del strategy['date']  # 删除日期键，仅保留星期几
+
+    return merged_strategies
+
+
+def merge_similar_strategies(data, future_days=7):
+    strategies = filter_and_merge_strategies(data, future_days)
+
+    # 检查是否所有条目除了day外都一样
+    if not strategies:
+        return []
+
+    # 用于比较的键列表，除去'day'
+    comparison_keys = [key for key in strategies[0] if key != 'day']
+
+    # 检查除了'day'以外的所有键是否在所有策略中都相同
+    all_same_except_day = all(
+        all(strategy[key] == strategies[0][key]
+            for key in comparison_keys) for strategy in strategies
+    )
+
+    if all_same_except_day:
+        # 合并所有的'day'值，排序并去重
+        merged_days = sorted(set(strategy['day'] for strategy in strategies))
+        # 创建一个新的策略条目，其'day'值为合并后的结果，其它键值与原条目相同
+        merged_strategy = {key: strategies[0][key] for key in strategies[0]}
+        merged_strategy['day'] = ''.join(map(str, merged_days))
+        return [merged_strategy]
+    else:
+        return strategies
 
 
 class RouterDataManager:
@@ -52,6 +181,7 @@ class RouterDataManager:
         self._acl_l7_list = None
         self._url_black_list = None
         self._domain_black_list = None
+        self._macs_block_mac_by_acl_l7 = None
 
         # {{{ cache_keys
         self.device_list_cache_key = get_device_list_cache_key(router_id)
@@ -61,6 +191,8 @@ class RouterDataManager:
         self.mac_groups_cache_key = get_mac_groups_cache_key(router_id)
         self.acl_l7_list_cache_key = get_acl_l7_list_cache_key(router_id)
         self.domain_blacklist_cache_key = get_domain_blacklist_cache_key(router_id)
+        self.macs_block_mac_by_acl_l7_cache_key = (
+            get_block_mac_by_acl_l7_cache_key(router_id))
         # }}}
 
         self.is_initialized_from_cached_data = False
@@ -75,6 +207,7 @@ class RouterDataManager:
         self._acl_l7_list = None
         self._url_black_list = None
         self._domain_black_list = None
+        self._macs_block_mac_by_acl_l7 = None
 
     def init_data_from_cache(self):
         self._devices = DEFAULT_CACHE.get(self.device_list_cache_key, [])
@@ -83,6 +216,9 @@ class RouterDataManager:
         self._acl_l7_list = DEFAULT_CACHE.get(self.acl_l7_list_cache_key, [])
         self._domain_black_list = DEFAULT_CACHE.get(
             self.domain_blacklist_cache_key, [])
+        self._macs_block_mac_by_acl_l7 = DEFAULT_CACHE.get(
+            self.macs_block_mac_by_acl_l7_cache_key, []
+        )
 
         self.is_initialized_from_cached_data = True
 
@@ -162,6 +298,18 @@ class RouterDataManager:
         return self._device_dict
 
     @property
+    def macs_block_mac_by_acl_l7(self):
+        if self._macs_block_mac_by_acl_l7 is None:
+            ret = list(Device.objects.filter(
+                router=self.router_instance,
+                block_mac_by_proto_ctrl=True).values_list("mac", flat=True))
+            self._macs_block_mac_by_acl_l7 = ret
+            if not self.is_initialized_from_cached_data:
+                DEFAULT_CACHE.set(
+                    self.macs_block_mac_by_acl_l7_cache_key, ret)
+        return self._macs_block_mac_by_acl_l7
+
+    @property
     def online_mac_list(self):
         return list(self.device_dict.keys())
 
@@ -205,7 +353,7 @@ class RouterDataManager:
     def cache_each_device_info(self):
         if not self.is_initialized_from_cached_data:
             for mac, device_info in deepcopy(self.device_dict).items():
-                device_info["last_seen"] = now()
+                device_info["last_seen"] = timezone.now()
                 self.cache_device_info(mac, device_info)
 
     @property
@@ -521,3 +669,60 @@ class RouterDataManager:
 
         elif info_name == "mac_group":
             return self.get_mac_group_list_for_view()
+
+    def _get_acl_l7_rule_md5(self, data):
+
+        print(data)
+
+        filtered_data = [item for item in data if item['app_proto'] == '所有协议']
+
+        # 对每个字典内的键进行字母序排序，而不是整个列表基于特定关键字排序
+        # 此处仅对字典内部进行排序，不改变字典间的顺序
+        sorted_data_by_key = sorted(
+            filtered_data,
+            key=lambda x: json.dumps(x, sort_keys=True, ensure_ascii=False))
+
+        # 将排序后的数据转换为JSON字符串
+        json_str_by_key = json.dumps(
+            sorted_data_by_key, ensure_ascii=False,
+            sort_keys=True)
+
+        # 使用MD5生成key
+        md5_key_by_key = hashlib.md5(json_str_by_key.encode('utf-8')).hexdigest()
+        return md5_key_by_key
+
+    def get_block_mac_by_acl_l7_md5_cache_key(self, mac):
+        return f"{self.router_id}:mac_link_md5_acl_l7:{mac}:{CACHE_VERSION}"
+
+    def set_mac_link_md5_acl_l7_md5_cache(self, mac, data):
+        DEFAULT_CACHE.set(self.get_block_mac_by_acl_l7_md5_cache_key(mac), data)
+
+    def get_block_mac_by_acl_l7_md5_cache(self, mac):
+        return DEFAULT_CACHE.get(
+            self.get_block_mac_by_acl_l7_md5_cache_key(mac), None)
+
+    def link_mac_control_to_acl_l7(self):
+        macs_linking_mac_ctl_to_acl_l7 = self.macs_block_mac_by_acl_l7
+        device_rule_data = self.get_device_rule_data()
+        # print(macs_linking_mac_ctl_to_acl_l7)
+
+        for mac in macs_linking_mac_ctl_to_acl_l7:
+            exist_md5 = self.get_block_mac_by_acl_l7_md5_cache(mac)
+
+            acl_l7_list = device_rule_data[mac]["acl_l7"]
+
+            if not acl_l7_list:
+                # todo: remove all tasks in the device
+                pass
+                continue
+
+            acl_l7_md5 = self._get_acl_l7_rule_md5(acl_l7_list)
+
+            print(acl_l7_md5)
+
+            print(filter_and_merge_strategies(acl_l7_list, 7))
+
+            print(merge_similar_strategies(acl_l7_list, 7))
+
+            if acl_l7_md5 == exist_md5:
+                continue

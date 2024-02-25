@@ -113,6 +113,11 @@ class Device(models.Model):
     added_datetime = models.DateTimeField(
         default=now, verbose_name=_("Added datetime"))
 
+    block_mac_by_proto_ctrl = models.BooleanField(
+        verbose_name=_("Control MAC via Proto Ctrl"),
+        default=False,
+        help_text=_("Banning all protocols in acl_l7 will result in MAC blocking"))
+
     class Meta:
         verbose_name = _("Device")
         verbose_name_plural = _("Devices")

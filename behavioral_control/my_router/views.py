@@ -94,7 +94,7 @@ class DeviceForm(StyledModelForm):
     class Meta:
         model = Device
         fields = ["name", "mac", "ignore", "known",
-                  "added_datetime"]
+                  "added_datetime", "block_mac_by_proto_ctrl"]
 
     def __init__(self, *args, **kwargs):
         # todo: mac_group joining & leaving
@@ -284,7 +284,8 @@ class DeviceUpdateView(LoginRequiredMixin, UpdateView):
         else:
             need_db_save = False
             for _field in form.changed_data:
-                if _field in ["name", "known", "ignore"]:
+                if _field in ["name", "known", "ignore",
+                              "block_mac_by_proto_ctrl"]:
                     need_db_save = True
                     break
 
