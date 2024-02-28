@@ -68,6 +68,7 @@ def fetch_new_info_save_and_set_cache(router_id: int | None = None,
     rd_manager.cache_each_device_info()
     rd_manager.cache_all_data()
     rd_manager.update_all_mac_cache()
+    rd_manager.update_mac_control_rule_from_acl_l7()
 
 
 @login_required

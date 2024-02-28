@@ -2,11 +2,12 @@ import hashlib
 import json
 from collections import defaultdict
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timedelta
 from urllib.parse import urljoin
 
 from django.utils import timezone
 
+from my_router import logger
 from my_router.constants import CACHE_VERSION, DEFAULT_CACHE
 from my_router.models import Device
 from my_router.serializers import (AclL7RuleSerializer, DeviceModelSerializer,
@@ -30,129 +31,323 @@ from my_router.utils import (get_acl_l7_list_cache_key,
                              get_url_black_list_cache_key)
 
 
-def split_and_identify_dominant_strategies_weekly_future(
-        data, future_days=7):
+class RuleDataFilter:
+    def __init__(self, rule_data):
+        rule_data = [r for r in rule_data if r["enabled"] is True]
+        self.rule_data = rule_data
+        self.dominant_strategies = (
+            self.split_and_identify_dominant_strategies_weekly())
 
-    data = [d for d in data if d["enabled"] is True]
+    def _merge_daily_adjacent_strategies(self, strategies, extra_ignored_keys=None):
+        extra_ignored_keys = extra_ignored_keys or []
+        ignored_keys = ['start_time', 'end_time'] + extra_ignored_keys
 
-    # 生成未来7天的日期列表
-    future_dates = [timezone.now().date() + timezone.timedelta(days=i)
-                    for i in range(future_days)]
-    future_weekdays = [(d.weekday() + 1) % 7 + 1 for d in future_dates]
+        sorted_strategies = sorted(
+            strategies, key=lambda x: (x["day"], x['start_time']))
 
-    # 将Python的weekday转换为1-7表示周一到周日
-    all_times = sorted(
-        set([time for d in data
-             for time in [d['time'].split('-')[0], d['time'].split('-')[1]]]))
-    time_ranges = [
-        (all_times[i], all_times[i+1])
-        for i in range(len(all_times)-1) if all_times[i] != all_times[i+1]]
+        # 合并逻辑
+        def merge_adjacent(sorted_list):
+            merged_list = []
+            prev = None
+            for strategy in sorted_list:
+                if (prev is not None
+                        and ((strategy['start_time'] == prev['end_time']
+                             or (datetime.strptime(strategy['start_time'], "%H:%M")
+                                 - datetime.strptime(prev['end_time'], "%H:%M")
+                                 <= timedelta(minutes=1)))
+                             and all(strategy[k] == prev[k]
+                                     for k in strategy
+                                     if k not in ignored_keys))):
 
-    # 按照未来7天处理
-    weekly_dominant_strategies = {str(day): [] for day in future_weekdays}
+                    # 更新结束时间以合并
+                    prev['end_time'] = strategy['end_time']
+                else:
+                    if prev is not None:
+                        merged_list.append(prev)
+                    prev = strategy.copy()  # 使用副本以避免修改原始输入
+            if prev is not None:
+                merged_list.append(prev)
+            return merged_list
 
-    for idx, day in enumerate(future_weekdays):
-        for start, end in time_ranges:
-            start_dt = datetime.strptime(start, '%H:%M')
-            end_dt = datetime.strptime(end, '%H:%M')
+        # 递归合并直到没有变化
+        while True:
+            merged_strategies = merge_adjacent(sorted_strategies)
 
-            # 在此时间段内的所有策略
-            strategies_in_range = [
-                d for d in data
-                if (str(day) in d['weekdays']
-                    and datetime.strptime(d['time'].split('-')[0], '%H:%M') < end_dt
-                    and datetime.strptime(d['time'].split('-')[1], '%H:%M') > start_dt)  # noqa
-            ]
+            # 如果长度没有变化，结束循环
+            if len(merged_strategies) == len(sorted_strategies):
+                break
+            sorted_strategies = merged_strategies  # 准备下一轮合并
 
-            if strategies_in_range:
-                # 选出此时间段优先级最高的策略
-                highest_priority_strategy = min(
-                    strategies_in_range, key=lambda x: x['priority'])
-                weekly_dominant_strategies[str(day)].append({
-                    'date': future_dates[idx].isoformat(),
-                    'time_range': f"{start}-{end}",
-                    'policy': highest_priority_strategy['name'],
-                    'priority': highest_priority_strategy['priority'],
-                    'action': highest_priority_strategy['action'],
-                    'app_proto': highest_priority_strategy['app_proto'],
-                })
+        return merged_strategies
 
-    # 将字典转换为列表
-    dominant_strategies_weekly_future = []
-    for strategies in weekly_dominant_strategies.values():
-        dominant_strategies_weekly_future.extend(strategies)
+    def split_and_identify_dominant_strategies_weekly(self):
+        weekdays = "1234567"  # From Monday to Sunday
+        rule_data = deepcopy(self.rule_data)
 
-    return dominant_strategies_weekly_future
+        weekly_dominant_strategies = {day: [] for day in weekdays}
 
+        for day in weekdays:
+            times_for_day = set()
+            for rd in rule_data:
+                if day not in rd["weekdays"]:
+                    continue
 
-def filter_and_merge_strategies(data, future_days=7):
-    # 首先调用之前的函数获取未来几天的策略数据
-    strategies = split_and_identify_dominant_strategies_weekly_future(
-        data,
-        future_days)
+                times_for_day.update(set([d for d in rd['time'].split('-')]))
 
-    print(strategies)
+            if not times_for_day:
+                continue
 
-    # 筛选出action为drop且'app_proto'为'所有协议'的结果
-    filtered_strategies = [
-        strategy for strategy in strategies
-        if strategy['action'] == 'drop' and strategy.get('app_proto') == '所有协议'
-    ]
+            times_for_day = sorted(times_for_day)
 
-    # 合并连续的时间段
-    merged_strategies = []
-    for strategy in filtered_strategies:
-        if not merged_strategies:
-            merged_strategies.append(strategy)
-        else:
-            last_strategy = merged_strategies[-1]
-            last_end_time = last_strategy['time_range'].split('-')[1]
-            current_start_time = strategy['time_range'].split('-')[0]
+            time_ranges = [(times_for_day[i], times_for_day[i + 1]) for i in
+                           range(len(times_for_day) - 1)]
 
-            # 如果时间段连续且在同一天内，则合并
-            if last_end_time == current_start_time and last_strategy['date'] == \
-                    strategy['date']:
-                new_time_range = (
-                    f"{last_strategy['time_range'].split('-')[0]}"
-                    f"-{strategy['time_range'].split('-')[1]}")
-                last_strategy['time_range'] = new_time_range
-            else:
+            for start, end in time_ranges:
+                start_dt = datetime.strptime(start, '%H:%M')
+                end_dt = datetime.strptime(end, '%H:%M')
+
+                # All strategies within this time range
+                strategies_in_range = [
+                    d for d in self.rule_data
+                    if (day in d["weekdays"]
+                        and datetime.strptime(
+                                d['time'].split('-')[0], '%H:%M') <= start_dt
+                        and datetime.strptime(
+                                d['time'].split('-')[1], '%H:%M') >= end_dt)
+                ]
+
+                if strategies_in_range:
+                    # Select the highest priority strategy for this time range
+                    highest_priority_strategy = min(
+                        strategies_in_range, key=lambda x: x['priority'])
+
+                    weekly_dominant_strategies[day].append({
+                        'day': day,
+                        'start_time': start,
+                        'end_time': end,
+                        'policy': highest_priority_strategy['name'],
+                        'priority': highest_priority_strategy['priority'],
+                        'action': highest_priority_strategy['action'],
+                        'app_proto': highest_priority_strategy['app_proto']
+                    })
+
+        # Convert the dictionary to a list
+        dominant_strategies_weekly = []
+        for day, strategies in weekly_dominant_strategies.items():
+            dominant_strategies_weekly.extend(strategies)
+
+        return dominant_strategies_weekly
+
+    def get_dropping_all_proto_strategies(self):
+        dropping_all_proto_strategies = [
+            strategy for strategy in self.dominant_strategies
+            if strategy['app_proto'] == '所有协议' and strategy['action'] == 'drop'
+        ]
+
+        merge_strategies = self._merge_daily_adjacent_strategies(
+            dropping_all_proto_strategies,
+            extra_ignored_keys=["priority", "policy", "action", "app_proto"]
+        )
+
+        return [
+            {k: v for k, v in d.items()
+             if k not in ["priority", "policy", "action", "app_proto"]}
+            for d in merge_strategies]
+
+    def is_next_day(self, d1, d2):
+        """检查d2是否是d1的下一个连续的天，考虑周末和周一的情况。"""
+        return (d1 % 7) + 1 == d2
+
+    @staticmethod
+    def find_continuous_substrings(s):
+        # Define the adjacency list for the graph, considering 7 is connected to 1
+        adjacency_list = {
+            '1': ['2', '7'],
+            '2': ['1', '3'],
+            '3': ['2', '4'],
+            '4': ['3', '5'],
+            '5': ['4', '6'],
+            '6': ['5', '7'],
+            '7': ['6', '1']
+        }
+
+        # Convert the string into a set for O(1) lookups
+        digits_set = set(s)
+
+        # Helper function to perform DFS and find connected components
+        def dfs(node, visited, component):
+            visited.add(node)
+            component.append(node)
+            for neighbour in adjacency_list[node]:
+                if neighbour in digits_set and neighbour not in visited:
+                    dfs(neighbour, visited, component)
+
+        visited = set()
+        components = []
+
+        # Perform DFS for each digit in the string that hasn't been visited
+        for digit in s:
+            if digit not in visited:
+                component = []
+                dfs(digit, visited, component)
+                components.append(''.join(sorted(component, key=lambda x: int(x))))
+
+        # Special case handling for '7' and '1' to ensure '7' comes before '1'
+        for i, component in enumerate(components):
+            if '7' in component and '1' in component:
+                components[i] = ''.join(
+                    sorted(component, key=lambda x: ('1' if x == '7' else '0', x)))
+
+        return components
+
+    def merge_days(self, days):
+        """合并连续的天数列表。"""
+        return self.find_continuous_substrings(days)
+
+    def merge_similar_strategies_by_day(self):
+        dropping_all_proto_strategies = self.get_dropping_all_proto_strategies()
+        strategies_by_signature = {}
+
+        # Group strategies by their "signature"
+        for strategy in dropping_all_proto_strategies:
+            signature = tuple(
+                (k, strategy[k]) for k in sorted(strategy) if k != 'day')
+            if signature not in strategies_by_signature:
+                strategies_by_signature[signature] = []
+            strategies_by_signature[signature].append(strategy['day'])
+
+        merged_strategies = []
+        for signature, days in strategies_by_signature.items():
+            merged_days_segments = self.merge_days(days)
+            for segment in merged_days_segments:
+                strategy = {k: v for k, v in signature}
+                strategy['day'] = segment
                 merged_strategies.append(strategy)
 
-    # 转换日期为星期几
-    for strategy in merged_strategies:
-        strategy_date = datetime.strptime(strategy['date'], '%Y-%m-%d')
-        strategy['day'] = strategy_date.isoweekday()
-        del strategy['date']  # 删除日期键，仅保留星期几
+        return merged_strategies
 
-    return merged_strategies
+    def compare_strategies(self, strategy1, strategy2):
+        # Check if two strategies are the same except for the weekdays
+        keys_to_compare = [
+            'start_time', 'end_time']
+        for key in keys_to_compare:
+            if strategy1.get(key) != strategy2.get(key):
+                return False
+        return True
 
+    def find_strategy_for_datetime(self, target_datetime):
+        # Validate if target_datetime is timezone aware
+        if (target_datetime.tzinfo is None
+                or target_datetime.tzinfo.utcoffset(target_datetime) is None):
+            raise ValueError("target_datetime must be timezone aware.")
 
-def merge_similar_strategies(data, future_days=7):
-    strategies = filter_and_merge_strategies(data, future_days)
+        weekday = target_datetime.isoweekday()
+        time = target_datetime.strftime("%H:%M")
+        # Handle the special case of 23:59 to 00:00 transition
+        if time == '23:59':
+            target_datetime += timedelta(seconds=1)  # Move to the next day 00:00
+            weekday = target_datetime.isoweekday()
+            time = '00:00'
+        elif time == '00:00':
+            target_datetime -= timedelta(seconds=1)  # Check the previous day's 23:59
+            weekday = target_datetime.isoweekday()
+            time = '23:59'
 
-    # 检查是否所有条目除了day外都一样
-    if not strategies:
-        return []
+        # Filter strategies applicable for the given datetime
+        applicable_strategies = self.get_dropping_all_proto_strategies()
+        for strategy in applicable_strategies:
+            if (str(weekday) in strategy['weekdays']
+                    and strategy['start_time'] <= time <= strategy['end_time']):
+                return strategy
+        return None
 
-    # 用于比较的键列表，除去'day'
-    comparison_keys = [key for key in strategies[0] if key != 'day']
+    def find_next_strategy_for_datetime(self, target_datetime):
+        # Validate if target_datetime is timezone aware
+        if (target_datetime.tzinfo is None
+                or target_datetime.tzinfo.utcoffset(target_datetime) is None):
+            raise ValueError("target_datetime must be timezone aware.")
 
-    # 检查除了'day'以外的所有键是否在所有策略中都相同
-    all_same_except_day = all(
-        all(strategy[key] == strategies[0][key]
-            for key in comparison_keys) for strategy in strategies
-    )
+        # Filter strategies applicable for the given datetime
+        applicable_strategies = self.get_dropping_all_proto_strategies()
+        next_strategy = None
+        min_time_diff = timedelta.max
 
-    if all_same_except_day:
-        # 合并所有的'day'值，排序并去重
-        merged_days = sorted(set(strategy['day'] for strategy in strategies))
-        # 创建一个新的策略条目，其'day'值为合并后的结果，其它键值与原条目相同
-        merged_strategy = {key: strategies[0][key] for key in strategies[0]}
-        merged_strategy['day'] = ''.join(map(str, merged_days))
-        return [merged_strategy]
-    else:
-        return strategies
+        for strategy in applicable_strategies:
+            for day in strategy['weekdays']:
+                strategy_datetime = (
+                    datetime(target_datetime.year, target_datetime.month,
+                             target_datetime.day, int(strategy['start_time'][:2]),
+                             int(strategy['start_time'][3:]),
+                             tzinfo=target_datetime.tzinfo))
+                # Adjust the strategy datetime to the correct weekday
+                days_diff = (int(day) - strategy_datetime.isoweekday()) % 7
+                strategy_datetime += timedelta(days=days_diff)
+                if strategy_datetime < target_datetime:
+                    strategy_datetime += timedelta(weeks=1)
+
+                time_diff = strategy_datetime - target_datetime
+                if 0 <= time_diff < min_time_diff:
+                    min_time_diff = time_diff
+                    next_strategy = strategy
+
+        return next_strategy
+
+    def find_current_and_next_range(self, current_datetime=None):
+        block_time_range = self.merge_similar_strategies_by_day()
+
+        # 如果没有提供current_datetime，使用当前UTC时间
+        if current_datetime is None:
+            current_datetime = timezone.now()
+
+        # 检查current_datetime是否为tz-aware
+        if current_datetime.tzinfo is None or current_datetime.tzinfo.utcoffset(
+                current_datetime) is None:
+            raise ValueError("current_datetime must be timezone aware")
+
+        current_datetime = timezone.localtime(current_datetime)
+
+        if not block_time_range:
+            return None, None
+
+        current_range = None
+        next_range = None
+        current_day = current_datetime.isoweekday()
+        current_time = current_datetime.time()
+
+        # 为方便比较，将当前时间转换为分钟
+        current_time_in_minutes = current_time.hour * 60 + current_time.minute
+
+        # 初始化一个列表，用于存储转换后的时间范围及其原始数据
+        parsed_ranges_with_original = []
+        for block in block_time_range:
+            days = [int(day) for day in block['day']]
+            start_time = datetime.strptime(block['start_time'], '%H:%M').time()
+            end_time = datetime.strptime(block['end_time'], '%H:%M').time()
+            start_time_in_minutes = start_time.hour * 60 + start_time.minute
+            end_time_in_minutes = end_time.hour * 60 + end_time.minute
+            for day in days:
+                parsed_ranges_with_original.append(
+                    (day, start_time_in_minutes, end_time_in_minutes, block))
+
+        # 查找当前时间范围
+        for day, start_time, end_time, original_block in parsed_ranges_with_original:
+            if day == current_day and start_time <= current_time_in_minutes < end_time:  # noqa
+                current_range = original_block
+                break
+
+        # 查找下一个时间范围
+        sorted_ranges = sorted(
+            parsed_ranges_with_original, key=lambda x: (x[0], x[1]))
+        for day, start_time, end_time, original_block in sorted_ranges:
+            if day > current_day or (
+                    day == current_day and start_time > current_time_in_minutes):
+                next_range = original_block
+                break
+        # 如果没有找到下一个时间范围，可能下一个时间范围在下周
+        if not next_range and sorted_ranges:
+            next_range = sorted_ranges[0][3]  # 获取排序后的第一个时间范围的原始数据
+
+        return current_range, next_range
 
 
 class RouterDataManager:
@@ -670,16 +865,11 @@ class RouterDataManager:
         elif info_name == "mac_group":
             return self.get_mac_group_list_for_view()
 
-    def _get_acl_l7_rule_md5(self, data):
-
-        print(data)
-
-        filtered_data = [item for item in data if item['app_proto'] == '所有协议']
-
+    def _get_md5_of_list_of_dict(self, data):
         # 对每个字典内的键进行字母序排序，而不是整个列表基于特定关键字排序
         # 此处仅对字典内部进行排序，不改变字典间的顺序
         sorted_data_by_key = sorted(
-            filtered_data,
+            data,
             key=lambda x: json.dumps(x, sort_keys=True, ensure_ascii=False))
 
         # 将排序后的数据转换为JSON字符串
@@ -701,28 +891,115 @@ class RouterDataManager:
         return DEFAULT_CACHE.get(
             self.get_block_mac_by_acl_l7_md5_cache_key(mac), None)
 
-    def link_mac_control_to_acl_l7(self):
+    def get_active_acl_mac_rule_of_device(self, mac):
+        acl_mac_list = self.ikuai_client.list_acl_mac()["data"]
+
+        for acl_mac in acl_mac_list:
+            if acl_mac["mac"] == mac and acl_mac["enabled"] == "yes":
+                return acl_mac
+
+        return None
+
+    def remove_active_acl_mac_rule_of_device(self, mac, debug=False):
+        if debug:
+            logger.debug(f"Removed acl_mac of {mac}.")
+            return
+
+        acl_mac_id = self.get_active_acl_mac_rule_of_device(mac)
+
+        if acl_mac_id is None:
+            return
+
+        return self.ikuai_client.del_acl_mac(acl_mac_id=acl_mac_id)
+
+    def add_acl_mac_rule(self, data, debug=False):
+        if debug:
+            logger.debug(f"Added acl_mac of {data}.")
+            return
+
+        return self.ikuai_client.add_acl_mac(**data)
+
+    def _update_mac_control_rule_from_acl_l7(
+            self, now_datetime, debug=False):
         macs_linking_mac_ctl_to_acl_l7 = self.macs_block_mac_by_acl_l7
         device_rule_data = self.get_device_rule_data()
-        # print(macs_linking_mac_ctl_to_acl_l7)
 
         for mac in macs_linking_mac_ctl_to_acl_l7:
-            exist_md5 = self.get_block_mac_by_acl_l7_md5_cache(mac)
-
             acl_l7_list = device_rule_data[mac]["acl_l7"]
 
             if not acl_l7_list:
-                # todo: remove all tasks in the device
-                pass
+                self.remove_active_acl_mac_rule_of_device(mac, debug=debug)
                 continue
 
-            acl_l7_md5 = self._get_acl_l7_rule_md5(acl_l7_list)
+            rule_filter = RuleDataFilter(acl_l7_list)
 
-            print(acl_l7_md5)
+            current_tr, next_tr = (
+                rule_filter.find_current_and_next_range(now_datetime))
 
-            print(filter_and_merge_strategies(acl_l7_list, 7))
+            active_acl_mac_rule = self.get_active_acl_mac_rule_of_device(mac)
+            logger.debug(f"Active acl_mac is {active_acl_mac_rule}.")
 
-            print(merge_similar_strategies(acl_l7_list, 7))
+            def convert_time_rule_to_acl_mac_data(_mac, _time_rule):
+                return {
+                    "mac": _mac,
+                    "week": _time_rule["day"],
+                    "time": f"{_time_rule['start_time']}-{_time_rule['end_time']}"}
 
-            if acl_l7_md5 == exist_md5:
+            if current_tr is None and next_tr is None:
+                logger.debug(f"Both current_tr and next_tr for '{mac}' are None")
+                self.remove_active_acl_mac_rule_of_device(mac, debug=debug)
+
                 continue
+
+            if current_tr is not None:
+                logger.debug(f"current_tr is {current_tr}")
+
+                current_tr_acl_mac_data = (
+                    convert_time_rule_to_acl_mac_data(mac, current_tr))
+
+                need_update_active_rule = False
+                if active_acl_mac_rule is None:
+                    need_update_active_rule = True
+                else:
+                    for key in ["week", "time"]:
+                        if active_acl_mac_rule[key] != current_tr_acl_mac_data[key]:
+                            need_update_active_rule = True
+
+                if need_update_active_rule:
+                    self.add_acl_mac_rule(current_tr_acl_mac_data, debug=debug)
+
+                if next_tr is None:
+                    logger.debug("next_tr is None. nothing to do")
+
+                else:
+                    logger.debug(f"next_tr is '{next_tr}'")
+                    if current_tr == next_tr:
+                        logger.debug(
+                            "current_tr and next_tr are the same, nothing to do")
+                        pass
+                    else:
+                        logger.debug(
+                            "need to create a task to add acl_mac rule for next_tr")
+
+            elif current_tr is None:
+                logger.debug(f"current_tr is {current_tr}")
+
+                assert next_tr is not None
+                logger.debug(f"next_tr is '{next_tr}'")
+
+                next_tr_acl_mac_data = (
+                    convert_time_rule_to_acl_mac_data(mac, next_tr))
+                need_update_active_rule = False
+
+                if active_acl_mac_rule is None:
+                    need_update_active_rule = True
+                else:
+                    for key in ["week", "time"]:
+                        if active_acl_mac_rule[key] != next_tr_acl_mac_data[key]:
+                            need_update_active_rule = True
+
+                if need_update_active_rule:
+                    self.add_acl_mac_rule(next_tr_acl_mac_data, debug=debug)
+
+    def update_mac_control_rule_from_acl_l7(self):
+        return self._update_mac_control_rule_from_acl_l7(timezone.now(), debug=True)
