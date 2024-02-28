@@ -1002,4 +1002,4 @@ class RouterDataManager:
                     self.add_acl_mac_rule(next_tr_acl_mac_data, debug=debug)
 
     def update_mac_control_rule_from_acl_l7(self):
-        return self._update_mac_control_rule_from_acl_l7(timezone.now(), debug=True)
+        return self._update_mac_control_rule_from_acl_l7(timezone.now())
