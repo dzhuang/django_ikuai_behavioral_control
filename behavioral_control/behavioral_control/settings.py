@@ -333,7 +333,7 @@ LOGGING = {
         },
     },
     'loggers': {
-        'router_behavioral_control': {
+        'ikuai_behavioral_control': {
             'handlers': ['file'],
             'level': 'INFO',
             # preventing double printing
