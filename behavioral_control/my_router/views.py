@@ -745,11 +745,15 @@ class ACLL7EditView(AddEditViewMixin, FormView):
 def list_acl_l7(request, router_id):
     router = get_object_or_404(Router, id=router_id)
     rd_manager = RouterDataManager(router_instance=router)
+    acl_l7_list = rd_manager.get_acl_l7_list_for_view()
+    mac_group_names = set(
+        item for sublist in acl_l7_list for item in sublist['apply_to'])
 
     return render(request, "my_router/protocol_control_list.html", {
         "router_id": router_id,
         "form_description": _("List of Protocol control"),
-        "router_protocol_control_url": rd_manager.router_protocol_control_url
+        "router_protocol_control_url": rd_manager.router_protocol_control_url,
+        "mac_group_names": mac_group_names
     })
 
 

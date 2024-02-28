@@ -15,10 +15,18 @@
 {% block content %}
   <h1>{% trans "List of Protocol control" %}</h1>
 
-  <a class="btn btn-default"
+  <div style="margin-bottom: 15px;">
+    <a class="btn btn-default"
      href="{% url "acl_l7-edit" router_id -1 %}">{% trans "Add Protocol control" %}</a>
-  <a class="btn btn-default"
+    <a class="btn btn-default"
      href="{{ router_protocol_control_url }}" target="_blank">{% trans "Edit Protocol control selection on router" %}</a>
+  </div>
+  <div>
+  {% for mac_group_name in mac_group_names %}
+    <button class="btn btn-default" onclick="filterTable('{{  mac_group_name }}')">{{ mac_group_name }}</button>
+  {% endfor %}
+    <button class="btn btn-success" onclick="filterTable('')">Reset Filter</button>
+  </div>
 
   <table class="table table-striped protocol_control-all">
     <thead>
@@ -138,6 +146,12 @@
       "language": {url: '{% static "datatables-i18n/i18n/" %}{{LANG}}.json'},
       "order": [[5, 'desc'], [6, 'asc']]
     });
+
+    function filterTable(value) {
+      let table = $('table.protocol_control-all').DataTable();
+      table.columns(7).search(value).draw();
+    }
+
   </script>
   {{ block.super }}
 {% endblock %}
