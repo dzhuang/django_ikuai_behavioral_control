@@ -1,14 +1,12 @@
-import hashlib
-import json
 from collections import defaultdict
 from copy import deepcopy
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 from urllib.parse import urljoin
 
 from django.utils import timezone
 
 from my_router import logger
-from my_router.constants import CACHE_VERSION, DEFAULT_CACHE
+from my_router.constants import DEFAULT_CACHE
 from my_router.models import Device
 from my_router.serializers import (AclL7RuleSerializer, DeviceModelSerializer,
                                    DeviceParseSerializer,
@@ -154,10 +152,6 @@ class RuleDataFilter:
              if k not in ["priority", "policy", "action", "app_proto"]}
             for d in merge_strategies]
 
-    def is_next_day(self, d1, d2):
-        """检查d2是否是d1的下一个连续的天，考虑周末和周一的情况。"""
-        return (d1 % 7) + 1 == d2
-
     @staticmethod
     def find_continuous_substrings(s):
         # Define the adjacency list for the graph, considering 7 is connected to 1
@@ -226,93 +220,16 @@ class RuleDataFilter:
 
         return merged_strategies
 
-    def compare_strategies(self, strategy1, strategy2):
-        # Check if two strategies are the same except for the weekdays
-        keys_to_compare = [
-            'start_time', 'end_time']
-        for key in keys_to_compare:
-            if strategy1.get(key) != strategy2.get(key):
-                return False
-        return True
-
-    def find_strategy_for_datetime(self, target_datetime):
-        # Validate if target_datetime is timezone aware
-        if (target_datetime.tzinfo is None
-                or target_datetime.tzinfo.utcoffset(target_datetime) is None):
-            raise ValueError("target_datetime must be timezone aware.")
-
-        weekday = target_datetime.isoweekday()
-        time = target_datetime.strftime("%H:%M")
-        # Handle the special case of 23:59 to 00:00 transition
-        if time == '23:59':
-            target_datetime += timedelta(seconds=1)  # Move to the next day 00:00
-            weekday = target_datetime.isoweekday()
-            time = '00:00'
-        elif time == '00:00':
-            target_datetime -= timedelta(seconds=1)  # Check the previous day's 23:59
-            weekday = target_datetime.isoweekday()
-            time = '23:59'
-
-        # Filter strategies applicable for the given datetime
-        applicable_strategies = self.get_dropping_all_proto_strategies()
-        for strategy in applicable_strategies:
-            if (str(weekday) in strategy['weekdays']
-                    and strategy['start_time'] <= time <= strategy['end_time']):
-                return strategy
-        return None
-
-    def find_next_strategy_for_datetime(self, target_datetime):
-        # Validate if target_datetime is timezone aware
-        if (target_datetime.tzinfo is None
-                or target_datetime.tzinfo.utcoffset(target_datetime) is None):
-            raise ValueError("target_datetime must be timezone aware.")
-
-        # Filter strategies applicable for the given datetime
-        applicable_strategies = self.get_dropping_all_proto_strategies()
-        next_strategy = None
-        min_time_diff = timedelta.max
-
-        for strategy in applicable_strategies:
-            for day in strategy['weekdays']:
-                strategy_datetime = (
-                    datetime(target_datetime.year, target_datetime.month,
-                             target_datetime.day, int(strategy['start_time'][:2]),
-                             int(strategy['start_time'][3:]),
-                             tzinfo=target_datetime.tzinfo))
-                # Adjust the strategy datetime to the correct weekday
-                days_diff = (int(day) - strategy_datetime.isoweekday()) % 7
-                strategy_datetime += timedelta(days=days_diff)
-                if strategy_datetime < target_datetime:
-                    strategy_datetime += timedelta(weeks=1)
-
-                time_diff = strategy_datetime - target_datetime
-                if 0 <= time_diff < min_time_diff:
-                    min_time_diff = time_diff
-                    next_strategy = strategy
-
-        return next_strategy
-
-    def find_current_and_next_range(self, current_datetime=None):
+    def find_current_and_next_range(self, now_datetime):
         block_time_range = self.merge_similar_strategies_by_day()
-
-        # 如果没有提供current_datetime，使用当前UTC时间
-        if current_datetime is None:
-            current_datetime = timezone.now()
-
-        # 检查current_datetime是否为tz-aware
-        if current_datetime.tzinfo is None or current_datetime.tzinfo.utcoffset(
-                current_datetime) is None:
-            raise ValueError("current_datetime must be timezone aware")
-
-        current_datetime = timezone.localtime(current_datetime)
 
         if not block_time_range:
             return None, None
 
         current_range = None
         next_range = None
-        current_day = current_datetime.isoweekday()
-        current_time = current_datetime.time()
+        current_day = now_datetime.isoweekday()
+        current_time = now_datetime.time()
 
         # 为方便比较，将当前时间转换为分钟
         current_time_in_minutes = current_time.hour * 60 + current_time.minute
@@ -694,7 +611,7 @@ class RouterDataManager:
         device_dict = deepcopy(self.device_dict)
 
         # {{{ include devices which were not online
-        all_macs = list(DEFAULT_CACHE.get(self.all_mac_cache_key))
+        all_macs = list(DEFAULT_CACHE.get(self.all_mac_cache_key, []))
 
         for mac in all_macs:
             if mac in self.online_mac_list:
@@ -744,11 +661,7 @@ class RouterDataManager:
         device_list_for_views = []
 
         for device_info in device_list:
-            serializer = DeviceWithRuleParseSerializer(data=device_info)
-            if not serializer.is_valid():
-                continue
-
-            device_list_for_views.append(serializer.data)
+            device_list_for_views.append(device_info)
         return device_list
 
     def get_domain_blacklist_data(self):
@@ -865,32 +778,6 @@ class RouterDataManager:
         elif info_name == "mac_group":
             return self.get_mac_group_list_for_view()
 
-    def _get_md5_of_list_of_dict(self, data):
-        # 对每个字典内的键进行字母序排序，而不是整个列表基于特定关键字排序
-        # 此处仅对字典内部进行排序，不改变字典间的顺序
-        sorted_data_by_key = sorted(
-            data,
-            key=lambda x: json.dumps(x, sort_keys=True, ensure_ascii=False))
-
-        # 将排序后的数据转换为JSON字符串
-        json_str_by_key = json.dumps(
-            sorted_data_by_key, ensure_ascii=False,
-            sort_keys=True)
-
-        # 使用MD5生成key
-        md5_key_by_key = hashlib.md5(json_str_by_key.encode('utf-8')).hexdigest()
-        return md5_key_by_key
-
-    def get_block_mac_by_acl_l7_md5_cache_key(self, mac):
-        return f"{self.router_id}:mac_link_md5_acl_l7:{mac}:{CACHE_VERSION}"
-
-    def set_mac_link_md5_acl_l7_md5_cache(self, mac, data):
-        DEFAULT_CACHE.set(self.get_block_mac_by_acl_l7_md5_cache_key(mac), data)
-
-    def get_block_mac_by_acl_l7_md5_cache(self, mac):
-        return DEFAULT_CACHE.get(
-            self.get_block_mac_by_acl_l7_md5_cache_key(mac), None)
-
     def get_active_acl_mac_rule_of_device(self, mac):
         acl_mac_list = self.ikuai_client.list_acl_mac()["data"]
 
@@ -900,27 +787,41 @@ class RouterDataManager:
 
         return None
 
-    def remove_active_acl_mac_rule_of_device(self, mac, debug=False):
-        if debug:
-            logger.debug(f"Removed acl_mac of {mac}.")
+    def remove_active_acl_mac_rule_of_device(self, mac):
+        logger.debug(f"Removed acl_mac of {mac}.")
+
+        active_acl_mac = self.get_active_acl_mac_rule_of_device(mac)
+
+        if active_acl_mac is None:
             return
 
-        acl_mac_id = self.get_active_acl_mac_rule_of_device(mac)
+        return self.ikuai_client.del_acl_mac(acl_mac_id=active_acl_mac["id"])
 
-        if acl_mac_id is None:
-            return
-
-        return self.ikuai_client.del_acl_mac(acl_mac_id=acl_mac_id)
-
-    def add_acl_mac_rule(self, data, debug=False):
-        if debug:
-            logger.debug(f"Added acl_mac of {data}.")
-            return
-
+    def add_acl_mac_rule(self, data):
+        logger.debug(f"Added acl_mac: {data}.")
         return self.ikuai_client.add_acl_mac(**data)
 
-    def _update_mac_control_rule_from_acl_l7(
-            self, now_datetime, debug=False):
+    def update_mac_control_rule_from_acl_l7_by_time(self, now_datetime=None):
+
+        # now_datetime，使用当前UTC时间
+        if now_datetime is None:
+            now_datetime = timezone.now()
+
+        # 检查now_datetime是否为tz-aware
+        if now_datetime.tzinfo is None or now_datetime.tzinfo.utcoffset(
+                now_datetime) is None:
+            raise ValueError("now_datetime must be timezone aware")
+
+        now_datetime = timezone.localtime(now_datetime)
+        t23_59 = datetime.combine(
+            now_datetime.date(), time(23, 59), tzinfo=now_datetime.tzinfo)
+
+        time_difference = now_datetime - t23_59
+
+        if timedelta(seconds=0) <= time_difference <= timedelta(seconds=60):
+            logger.info("Skip updating when the time is between 23:59 and 00:00")
+            return
+
         macs_linking_mac_ctl_to_acl_l7 = self.macs_block_mac_by_acl_l7
         device_rule_data = self.get_device_rule_data()
 
@@ -928,7 +829,7 @@ class RouterDataManager:
             acl_l7_list = device_rule_data[mac]["acl_l7"]
 
             if not acl_l7_list:
-                self.remove_active_acl_mac_rule_of_device(mac, debug=debug)
+                self.remove_active_acl_mac_rule_of_device(mac)
                 continue
 
             rule_filter = RuleDataFilter(acl_l7_list)
@@ -947,7 +848,7 @@ class RouterDataManager:
 
             if current_tr is None and next_tr is None:
                 logger.debug(f"Both current_tr and next_tr for '{mac}' are None")
-                self.remove_active_acl_mac_rule_of_device(mac, debug=debug)
+                self.remove_active_acl_mac_rule_of_device(mac)
 
                 continue
 
@@ -958,6 +859,7 @@ class RouterDataManager:
                     convert_time_rule_to_acl_mac_data(mac, current_tr))
 
                 need_update_active_rule = False
+
                 if active_acl_mac_rule is None:
                     need_update_active_rule = True
                 else:
@@ -966,8 +868,9 @@ class RouterDataManager:
                             need_update_active_rule = True
 
                 if need_update_active_rule:
-                    self.add_acl_mac_rule(current_tr_acl_mac_data, debug=debug)
+                    self.add_acl_mac_rule(current_tr_acl_mac_data)
 
+                # This will not happen, at least equals itself
                 if next_tr is None:
                     logger.debug("next_tr is None. nothing to do")
 
@@ -981,7 +884,8 @@ class RouterDataManager:
                         logger.debug(
                             "need to create a task to add acl_mac rule for next_tr")
 
-            elif current_tr is None:
+            else:
+                assert current_tr is None
                 logger.debug(f"current_tr is {current_tr}")
 
                 assert next_tr is not None
@@ -999,7 +903,7 @@ class RouterDataManager:
                             need_update_active_rule = True
 
                 if need_update_active_rule:
-                    self.add_acl_mac_rule(next_tr_acl_mac_data, debug=debug)
+                    self.add_acl_mac_rule(next_tr_acl_mac_data)
 
     def update_mac_control_rule_from_acl_l7(self):
-        return self._update_mac_control_rule_from_acl_l7(timezone.now())
+        return self.update_mac_control_rule_from_acl_l7_by_time(timezone.now())
