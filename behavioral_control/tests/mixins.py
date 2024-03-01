@@ -1,8 +1,21 @@
+from datetime import datetime
 from unittest import mock
+from unittest.mock import MagicMock
 
+from django.db.models.signals import post_save
 from django.test import Client, override_settings
 from django.urls import reverse
+from django.utils import timezone
+from tests.data_for_tests import (DEFAULT_IKUAI_CLIENT_LIST_ACL_L7,
+                                  DEFAULT_IKUAI_CLIENT_LIST_DOMAIN_BLACKLIST,
+                                  DEFAULT_IKUAI_CLIENT_LIST_MAC_GROUPS,
+                                  DEFAULT_IKUAI_CLIENT_LIST_MONITOR_LANIP,
+                                  DEFAULT_IKUAI_CLIENT_LIST_URL_BLACK)
 from tests.factories import RouterFactory, UserFactory
+
+from my_router.data_manager import RouterDataManager
+from my_router.models import Router
+from my_router.receivers import create_or_update_router_fetch_task
 
 
 class CacheMixin:
@@ -192,3 +205,82 @@ class MockRouterClientMixin:
     def fetch_cached_info_url(self, info_name="device", router_id=None):
         router_id = router_id or self.router.id
         return reverse("fetch-cached-info", args=(router_id, info_name,))
+
+    @staticmethod
+    def get_local_time(time_str):
+        current_tz = timezone.get_current_timezone()
+
+        formats = ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%H:%M:%S", "%H:%M"]
+
+        for fmt in formats:
+            try:
+                # 尝试解析时间字符串
+                time = datetime.strptime(time_str, fmt)
+                # 如果时间字符串不包含日期，则添加当前日期
+                if fmt in ["%H:%M:%S", "%H:%M"]:
+                    now = timezone.now()
+                    time = time.replace(year=now.year, month=now.month,
+                                        day=now.day)
+                break
+            except ValueError:
+                continue
+        else:
+            raise ValueError(f"时间字符串 '{time_str}' 不符合预期的格式")
+
+        local_time = timezone.make_aware(time, current_tz)
+
+        return local_time
+
+
+class DataManagerTestMixin(CacheMixin, MockRouterClientMixin):
+    @property
+    def default_ikuai_client_list_monitor_lanip(self):
+        return DEFAULT_IKUAI_CLIENT_LIST_MONITOR_LANIP
+
+    @property
+    def default_ikuai_client_list_mac_groups(self):
+        return DEFAULT_IKUAI_CLIENT_LIST_MAC_GROUPS
+
+    @property
+    def default_ikuai_client_list_acl_l7(self):
+        return DEFAULT_IKUAI_CLIENT_LIST_ACL_L7
+
+    @property
+    def default_ikuai_client_list_domain_blacklist(self):
+        return DEFAULT_IKUAI_CLIENT_LIST_DOMAIN_BLACKLIST
+
+    @property
+    def default_ikuai_client_list_url_black(self):
+        return DEFAULT_IKUAI_CLIENT_LIST_URL_BLACK
+
+    def setUp(self):
+        super().setUp()
+
+        post_save.disconnect(create_or_update_router_fetch_task, sender=Router)
+
+        router_instance = self.router
+        self.mock_client = MagicMock()
+
+        router_instance.get_client = MagicMock(return_value=self.mock_client)
+
+        self.rd_manager = RouterDataManager(router_instance=router_instance)
+
+        self.mock_client.list_monitor_lanip.return_value = (
+            self.default_ikuai_client_list_monitor_lanip)
+
+        self.mock_client.list_mac_groups.return_value = (
+            self.default_ikuai_client_list_mac_groups)
+
+        self.mock_client.list_acl_l7.return_value = (
+            self.default_ikuai_client_list_acl_l7)
+
+        self.mock_client.list_domain_blacklist.return_value = (
+            self.default_ikuai_client_list_domain_blacklist)
+
+        self.mock_client.list_url_black.return_value = (
+            self.default_ikuai_client_list_url_black)
+
+    def tearDown(self):
+        # 重新连接信号
+        super().tearDown()
+        post_save.connect(create_or_update_router_fetch_task, sender=Router)

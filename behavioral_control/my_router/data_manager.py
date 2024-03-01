@@ -298,7 +298,6 @@ class RouterDataManager:
         # {{{ cache_keys
         self.device_list_cache_key = get_device_list_cache_key(router_id)
         self.all_mac_cache_key = get_router_all_devices_mac_cache_key(router_id)
-        self.all_info_cache_key = get_device_list_cache_key(router_id)
         self.url_black_list_cache_key = get_url_black_list_cache_key(router_id)
         self.mac_groups_cache_key = get_mac_groups_cache_key(router_id)
         self.acl_l7_list_cache_key = get_acl_l7_list_cache_key(router_id)
@@ -390,9 +389,8 @@ class RouterDataManager:
             # fixme: default number of devices is maximum 100
             self._devices = serializer.data["data"]
 
-            if not self.is_initialized_from_cached_data:
-                self.update_device_db_instances()
-                DEFAULT_CACHE.set(self.device_list_cache_key, self._devices)
+            self.update_device_db_instances()
+            DEFAULT_CACHE.set(self.device_list_cache_key, self._devices)
 
         return self._devices
 
@@ -416,9 +414,9 @@ class RouterDataManager:
                 router=self.router_instance,
                 block_mac_by_proto_ctrl=True).values_list("mac", flat=True))
             self._macs_block_mac_by_acl_l7 = ret
-            if not self.is_initialized_from_cached_data:
-                DEFAULT_CACHE.set(
-                    self.macs_block_mac_by_acl_l7_cache_key, ret)
+
+            DEFAULT_CACHE.set(
+                self.macs_block_mac_by_acl_l7_cache_key, ret)
         return self._macs_block_mac_by_acl_l7
 
     @property
@@ -435,20 +433,10 @@ class RouterDataManager:
         all_cached_macs = self.get_cached_all_mac()
         all_cached_macs = all_cached_macs | set(self.online_mac_list)
 
-        # this should be done with a test
-        def check_no_nesting(input_list):
-            # 遍历列表中的每个元素
-            for item in input_list:
-                # 如果元素是列表，则返回False
-                if isinstance(item, list):
-                    return False
-            # 如果所有元素都不是列表，则返回True
-            return True
+        for mac in all_cached_macs:
+            assert isinstance(mac, str)
 
-        assert check_no_nesting(all_cached_macs)
-
-        if not self.is_initialized_from_cached_data:
-            DEFAULT_CACHE.set(self.all_mac_cache_key, all_cached_macs)
+        DEFAULT_CACHE.set(self.all_mac_cache_key, all_cached_macs)
 
     def get_cached_device_info(self, mac):
         return DEFAULT_CACHE.get(self.get_device_cache_key(mac))
@@ -480,8 +468,7 @@ class RouterDataManager:
             # of the serializer later.
             self._mac_groups_list = serializer.data
 
-            if not self.is_initialized_from_cached_data:
-                DEFAULT_CACHE.set(self.mac_groups_cache_key, self._mac_groups_list)
+            DEFAULT_CACHE.set(self.mac_groups_cache_key, self._mac_groups_list)
 
         return self._mac_groups_list
 
@@ -510,8 +497,7 @@ class RouterDataManager:
             serializer.is_valid(raise_exception=True)
             self._acl_l7_list = serializer.data["data"]
 
-            if not self.is_initialized_from_cached_data:
-                DEFAULT_CACHE.set(self.acl_l7_list_cache_key, self._acl_l7_list)
+            DEFAULT_CACHE.set(self.acl_l7_list_cache_key, self._acl_l7_list)
 
         return self._acl_l7_list
 
@@ -525,9 +511,8 @@ class RouterDataManager:
             serializer.is_valid(raise_exception=True)
             self._url_black_list = serializer.data["data"]
 
-            if not self.is_initialized_from_cached_data:
-                DEFAULT_CACHE.set(
-                    self.url_black_list_cache_key, self._url_black_list)
+            DEFAULT_CACHE.set(
+                self.url_black_list_cache_key, self._url_black_list)
 
         return self._url_black_list
 
@@ -541,9 +526,8 @@ class RouterDataManager:
             serializer.is_valid(raise_exception=True)
             self._domain_black_list = serializer.data["data"]
 
-            if not self.is_initialized_from_cached_data:
-                DEFAULT_CACHE.set(
-                    self.domain_blacklist_cache_key, self._domain_black_list)
+            DEFAULT_CACHE.set(
+                self.domain_blacklist_cache_key, self._domain_black_list)
 
         return self._domain_black_list
 
@@ -557,18 +541,13 @@ class RouterDataManager:
                         mac_rule_dict[_mac].setdefault("domain_blacklist", {})
                         if domain_blacklist["enabled"] == "yes":
                             mac_rule_dict[_mac]["domain_blacklist"].setdefault("enabled", [])  # noqa
-                            if domain_blacklist not in mac_rule_dict[_mac][
-                                    "domain_blacklist"]["enabled"]:
-                                mac_rule_dict[_mac]["domain_blacklist"]["enabled"].append(  # noqa
-                                    domain_blacklist)
+                            mac_rule_dict[_mac]["domain_blacklist"]["enabled"].append(  # noqa
+                                domain_blacklist)
                         else:
                             mac_rule_dict[_mac]["domain_blacklist"].setdefault(
                                 "disabled", [])  # noqa
-                            if domain_blacklist not in mac_rule_dict[_mac][
-                                    "domain_blacklist"]["disabled"]:
-                                mac_rule_dict[_mac]["domain_blacklist"][
-                                    "disabled"].append(  # noqa
-                                    domain_blacklist)
+                            mac_rule_dict[_mac]["domain_blacklist"][
+                                "disabled"].append(domain_blacklist)
 
         for url_black in deepcopy(self.url_black_list):
             ip_addrs = url_black["ip_addr"].split(",")
@@ -578,13 +557,10 @@ class RouterDataManager:
                         mac_rule_dict[_mac].setdefault("url_black", {})
                         if url_black["enabled"] == "yes":
                             mac_rule_dict[_mac]["url_black"].setdefault("enabled", [])  # noqa
-                            if url_black not in mac_rule_dict[_mac]["url_black"]["enabled"]:  # noqa
-                                mac_rule_dict[_mac]["url_black"]["enabled"].append(
-                                    url_black)
+                            mac_rule_dict[_mac]["url_black"]["enabled"].append(url_black)  # noqa
                         else:
                             mac_rule_dict[_mac]["url_black"].setdefault("disabled", [])  # noqa
-                            if url_black not in mac_rule_dict[_mac]["url_black"]["disabled"]:  # noqa
-                                mac_rule_dict[_mac]["url_black"]["disabled"].append(url_black)  # noqa
+                            mac_rule_dict[_mac]["url_black"]["disabled"].append(url_black)  # noqa
 
         for acl_l7 in deepcopy(self.acl_l7_list):
             src_addrs = acl_l7["src_addr"].split(",")
@@ -594,16 +570,11 @@ class RouterDataManager:
                         mac_rule_dict[_mac].setdefault("acl_l7", {})
                         if acl_l7["enabled"] == "yes":
                             mac_rule_dict[_mac]["acl_l7"].setdefault("enabled", [])
-                            if acl_l7 not in mac_rule_dict[_mac][
-                                    "acl_l7"]["enabled"]:
-                                mac_rule_dict[_mac]["acl_l7"]["enabled"].append(
-                                    acl_l7)
+                            mac_rule_dict[_mac]["acl_l7"]["enabled"].append(acl_l7)
                         else:
                             mac_rule_dict[_mac]["acl_l7"].setdefault("disabled", [])
-                            if acl_l7 not in mac_rule_dict[_mac][
-                                    "acl_l7"]["disabled"]:
-                                mac_rule_dict[_mac]["acl_l7"]["disabled"].append(
-                                    acl_l7)
+                            mac_rule_dict[_mac]["acl_l7"]["disabled"].append(
+                                acl_l7)
 
         return dict(mac_rule_dict)
 
@@ -611,21 +582,19 @@ class RouterDataManager:
         device_dict = deepcopy(self.device_dict)
 
         # {{{ include devices which were not online
-        all_macs = list(DEFAULT_CACHE.get(self.all_mac_cache_key, []))
+        all_macs = list(self.get_cached_all_mac())
 
         for mac in all_macs:
             if mac in self.online_mac_list:
                 continue
 
-            cached_this_device_info = DEFAULT_CACHE.get(
-                self.get_device_cache_key(mac), None)
+            cached_this_device_info = self.get_cached_device_info(mac)
 
             if not cached_this_device_info:
                 continue
 
             serializer = DeviceParseSerializer(data=cached_this_device_info)
-            if not serializer.is_valid():
-                continue
+            serializer.is_valid(raise_exception=True)
 
             device_dict[mac] = cached_this_device_info
             device_dict[mac]["online"] = False
@@ -644,8 +613,7 @@ class RouterDataManager:
 
         for mac, device_info in device_dict.items():
             serializer = DeviceWithRuleParseSerializer(data=device_info)
-            if not serializer.is_valid():
-                continue
+            serializer.is_valid(raise_exception=True)
 
             new_dict[mac] = serializer.get_datatable_data()
 
@@ -671,8 +639,7 @@ class RouterDataManager:
         for dblist_item in domain_blacklist:
             dblist_id = int(dblist_item["id"])
             serializer = DomainBlackListSerializer(data=dblist_item)
-            if not serializer.is_valid():
-                continue
+            serializer.is_valid(raise_exception=True)
 
             ret[dblist_id] = serializer.get_datatable_data(self.router_id)
         return ret
@@ -715,8 +682,7 @@ class RouterDataManager:
         for acl_l7_item in acl_l7:
             acl_l7_id = int(acl_l7_item["id"])
             serializer = AclL7RuleSerializer(data=acl_l7_item)
-            if not serializer.is_valid():
-                continue
+            serializer.is_valid(raise_exception=True)
 
             ret[acl_l7_id] = serializer.get_datatable_data(self.router_id)
 
@@ -734,8 +700,7 @@ class RouterDataManager:
         for m_group in mac_groups:
             group_id = int(m_group["id"])
             serializer = MacGroupRuleSerializer(data=m_group)
-            if not serializer.is_valid():
-                continue
+            serializer.is_valid(raise_exception=True)
 
             ret[group_id] = serializer.get_datatable_data(self.router_id)
 
@@ -778,6 +743,8 @@ class RouterDataManager:
         elif info_name == "mac_group":
             return self.get_mac_group_list_for_view()
 
+        raise NotImplementedError()
+
     def get_active_acl_mac_rule_of_device(self, mac):
         acl_mac_list = self.ikuai_client.list_acl_mac()["data"]
 
@@ -808,8 +775,8 @@ class RouterDataManager:
             now_datetime = timezone.now()
 
         # 检查now_datetime是否为tz-aware
-        if now_datetime.tzinfo is None or now_datetime.tzinfo.utcoffset(
-                now_datetime) is None:
+        if (now_datetime.tzinfo is None  # pragma: no cover
+                or now_datetime.tzinfo.utcoffset(now_datetime) is None):
             raise ValueError("now_datetime must be timezone aware")
 
         now_datetime = timezone.localtime(now_datetime)
@@ -870,19 +837,16 @@ class RouterDataManager:
                 if need_update_active_rule:
                     self.add_acl_mac_rule(current_tr_acl_mac_data)
 
-                # This will not happen, at least equals itself
-                if next_tr is None:
-                    logger.debug("next_tr is None. nothing to do")
+                assert next_tr is not None
 
+                logger.debug(f"next_tr is '{next_tr}'")
+                if current_tr == next_tr:
+                    logger.debug(
+                        "current_tr and next_tr are the same, nothing to do")
+                    pass
                 else:
-                    logger.debug(f"next_tr is '{next_tr}'")
-                    if current_tr == next_tr:
-                        logger.debug(
-                            "current_tr and next_tr are the same, nothing to do")
-                        pass
-                    else:
-                        logger.debug(
-                            "need to create a task to add acl_mac rule for next_tr")
+                    logger.debug(
+                        "need to create a task to add acl_mac rule for next_tr")
 
             else:
                 assert current_tr is None
