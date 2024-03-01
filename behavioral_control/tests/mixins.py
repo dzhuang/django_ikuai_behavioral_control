@@ -258,7 +258,7 @@ class DataManagerTestMixin(CacheMixin, MockRouterClientMixin):
 
         post_save.disconnect(create_or_update_router_fetch_task, sender=Router)
 
-        router_instance = RouterFactory()
+        router_instance = self.router
         self.mock_client = MagicMock()
 
         router_instance.get_client = MagicMock(return_value=self.mock_client)
@@ -282,4 +282,5 @@ class DataManagerTestMixin(CacheMixin, MockRouterClientMixin):
 
     def tearDown(self):
         # 重新连接信号
+        super().tearDown()
         post_save.connect(create_or_update_router_fetch_task, sender=Router)
