@@ -1,270 +1,15 @@
-from unittest.mock import MagicMock, patch
 from copy import deepcopy
+from unittest.mock import MagicMock, patch
 
-from django.db.models.signals import post_save
 from django.test import TestCase
-from tests.factories import RouterFactory
-from tests.mixins import CacheMixin, MockRouterClientMixin
+from tests.data_for_tests import FAKE_MAC, MAC1, MAC2, MAC_GROUP_2
+from tests.mixins import DataManagerTestMixin
 
-from my_router.data_manager import RouterDataManager, RuleDataFilter, DEFAULT_CACHE
-from my_router.models import Device, Router
-from my_router.receivers import create_or_update_router_fetch_task
-
-MAC1 = "44:a8:bc:43:97:2d"
-MAC2 = "00:04:4a:86:32:9b"
-FAKE_MAC = "00:00:00:00:00:00"
-MAC_GROUP_1 = "IPAD"
-MAC_GROUP_2 = "ALL"
-IP_ADDR = "192.168.100.100"
+from my_router.data_manager import DEFAULT_CACHE, RuleDataFilter
+from my_router.models import Device
 
 
-class DataManagerTestBase(CacheMixin, MockRouterClientMixin):
-    @property
-    def default_ikuai_client_list_monitor_lanip(self):
-        return {
-            'total': 2,
-            'data': [{'uptime': '2024-02-25 13:32:36',
-                      'mac': f'{MAC1}',
-                      'dtalk_name': '',
-                      'uprate': '',
-                      'link_addr': '',
-                      'bssid': '',
-                      'comment': 'iPad',
-                      'downrate': '',
-                      'reject': 0,
-                      'hostname': 'iPad',
-                      'apmac': '',
-                      'frequencies': '',
-                      'ssid': '',
-                      'apname': '',
-                      'ip_addr_int': 3232263691,
-                      'connect_num': 1,
-                      'upload': 0,
-                      'download': 0,
-                      'auth_type': 0,
-                      'client_type': 'Unknown',
-                      'client_device': 'Unknown',
-                      'timestamp': 1708839156,
-                      'id': 1,
-                      'ac_gid': 0,
-                      'webid': 0,
-                      'ppptype': '',
-                      'ip_addr': '192.168.110.11',
-                      'username': '',
-                      'total_up': 2387003,
-                      'total_down': 1913202,
-                      'signal': ''},
-                     {'uptime': '2024-02-25 13:32:55',
-                      'mac': MAC2,
-                      'dtalk_name': '',
-                      'uprate': '',
-                      'link_addr': '',
-                      'bssid': '',
-                      'comment': 'TVBOX',
-                      'downrate': '',
-                      'reject': 0,
-                      'hostname': 'TVBOX',
-                      'apmac': '',
-                      'frequencies': '',
-                      'ssid': '',
-                      'apname': '',
-                      'ip_addr_int': 3232263684,
-                      'connect_num': 1,
-                      'upload': 0,
-                      'download': 0,
-                      'auth_type': 0,
-                      'client_type': 'Unknown',
-                      'client_device': 'Xiaomi',
-                      'timestamp': 1708839175,
-                      'id': 2,
-                      'ac_gid': 0,
-                      'webid': 0,
-                      'ppptype': '',
-                      'ip_addr': '192.168.110.4',
-                      'username': '',
-                      'total_up': 2022282,
-                      'total_down': 2002042,
-                      'signal': ''}]}
-
-    @property
-    def default_ikuai_client_list_mac_groups(self):
-        return {'total': 2,
-                'data': [{'group_name': f'{MAC_GROUP_1}',
-                          'addr_pool': f'{MAC1}',
-                          'id': 1,
-                          'comment': ''},
-                         {'group_name': MAC_GROUP_2,
-                          'addr_pool': f'{MAC2},{MAC1}',
-                          'id': 8,
-                          'comment': ''}]}
-
-    @property
-    def default_ikuai_client_list_acl_l7(self):
-        return {'total': 9,
-                'data': [{'prio': 28,
-                          'action': 'drop',
-                          'app_proto': '所有协议',
-                          'src_addr': f"{MAC_GROUP_1},{IP_ADDR}",
-                          'dst_addr': '',
-                          'week': '1234567',
-                          'time': '00:00-23:59',
-                          'id': 2,
-                          'enabled': 'yes',
-                          'comment': '阻断全部上网'},
-                         {'prio': 10,
-                          'action': 'accept',
-                          'app_proto': '所有协议',
-                          'src_addr': MAC_GROUP_1,
-                          'dst_addr': '',
-                          'week': '6',
-                          'time': '21:36-22:04',
-                          'id': 4,
-                          'enabled': 'no',
-                          'comment': 'ipad临时'},
-                         {'prio': 8,
-                          'action': 'drop',
-                          'app_proto': '网络游戏',
-                          'src_addr': MAC_GROUP_1,
-                          'dst_addr': '',
-                          'week': '1234567',
-                          'time': '00:00-23:59',
-                          'id': 5,
-                          'enabled': 'yes',
-                          'comment': '阻止游戏'},
-                         {'prio': 8,
-                          'action': 'drop',
-                          'app_proto': '网络视频',
-                          'src_addr': MAC_GROUP_1,
-                          'dst_addr': '',
-                          'week': '1234567',
-                          'time': '00:00-23:59',
-                          'id': 6,
-                          'enabled': 'yes',
-                          'comment': '阻止视频'},
-                         {'prio': 16,
-                          'action': 'drop',
-                          'app_proto': '国内视频',
-                          'src_addr': MAC_GROUP_2,
-                          'dst_addr': '',
-                          'week': '1234567',
-                          'time': '00:00-23:30',
-                          'id': 7,
-                          'enabled': 'yes',
-                          'comment': '阻止电视'},
-                         {'prio': 32,
-                          'action': 'drop',
-                          'app_proto': '淘宝视频,淘宝通用账号,淘宝',
-                          'src_addr': MAC_GROUP_2,
-                          'dst_addr': '',
-                          'week': '1234567',
-                          'time': '00:00-23:59',
-                          'id': 8,
-                          'enabled': 'yes',
-                          'comment': '禁止淘宝'},
-                         {'prio': 1,
-                          'action': 'accept',
-                          'app_proto': '所有协议',
-                          'src_addr': MAC_GROUP_2,
-                          'dst_addr': '',
-                          'week': '3',
-                          'time': '22:10-22:25',
-                          'id': 9,
-                          'enabled': 'yes',
-                          'comment': '允许电视'},
-                         {'prio': 15,
-                          'action': 'drop',
-                          'app_proto': '所有协议',
-                          'src_addr': MAC_GROUP_2,
-                          'dst_addr': '',
-                          'week': '1234567',
-                          'time': '00:00-23:59',
-                          'id': 10,
-                          'enabled': 'yes',
-                          'comment': '禁止电视'},
-                         {'prio': 2,
-                          'action': 'accept',
-                          'app_proto': '所有协议',
-                          'src_addr': MAC_GROUP_2,
-                          'dst_addr': '',
-                          'week': '1234567',
-                          'time': '00:00-05:00',
-                          'id': 11,
-                          'enabled': 'yes',
-                          'comment': '允许电视'}]}
-
-    @property
-    def default_ikuai_client_list_domain_blacklist(self):
-        return {'total': 2,
-                'data': [{'time': '00:00-23:59',
-                          'id': 1,
-                          'enabled': 'yes',
-                          'comment': '',
-                          'domain_group': '游戏网站',
-                          'weekdays': '12345',
-                          'ipaddr': f"{MAC_GROUP_1},{IP_ADDR}"},
-                         {'time': '00:00-23:59',
-                          'id': 2,
-                          'enabled': 'no',
-                          'comment': '',
-                          'domain_group': '视频网站',
-                          'weekdays': '67',
-                          'ipaddr': MAC_GROUP_1}
-                         ]}
-
-    @property
-    def default_ikuai_client_list_url_black(self):
-        return {'total': 2,
-                'data': [{'ip_addr': MAC_GROUP_1,
-                          'id': 1,
-                          'enabled': 'no',
-                          'week': '1234567',
-                          'comment': 'foo',
-                          'time': '00:00-23:59',
-                          'domain': 'foo.bar.com,bar.foo.com',
-                          'mode': 0},
-                         {'ip_addr': f"{MAC_GROUP_1},{IP_ADDR}",
-                          'id': 2,
-                          'enabled': 'yes',
-                          'week': '1234567',
-                          'comment': 'bar',
-                          'time': '00:00-23:59',
-                          'domain': 'bar.com.foo,foo.com.bar',
-                          'mode': 0}
-                         ]}
-
-    def setUp(self):
-        super().setUp()
-
-        post_save.disconnect(create_or_update_router_fetch_task, sender=Router)
-
-        router_instance = RouterFactory()
-        self.mock_client = MagicMock()
-
-        router_instance.get_client = MagicMock(return_value=self.mock_client)
-
-        self.rd_manager = RouterDataManager(router_instance=router_instance)
-
-        self.mock_client.list_monitor_lanip.return_value = (
-            self.default_ikuai_client_list_monitor_lanip)
-
-        self.mock_client.list_mac_groups.return_value = (
-            self.default_ikuai_client_list_mac_groups)
-
-        self.mock_client.list_acl_l7.return_value = (
-            self.default_ikuai_client_list_acl_l7)
-
-        self.mock_client.list_domain_blacklist.return_value = (
-            self.default_ikuai_client_list_domain_blacklist)
-
-        self.mock_client.list_url_black.return_value = (
-            self.default_ikuai_client_list_url_black)
-
-    def tearDown(self):
-        # 重新连接信号
-        post_save.connect(create_or_update_router_fetch_task, sender=Router)
-
-
-class DataManagerPropertiesTest(DataManagerTestBase, TestCase):
+class DataManagerPropertiesTest(DataManagerTestMixin, TestCase):
 
     def test_device_and_dict(self):
         self.assertIsNone(self.rd_manager._devices)
@@ -319,7 +64,7 @@ class DataManagerPropertiesTest(DataManagerTestBase, TestCase):
         self.assertIsNotNone(self.rd_manager.macs_block_mac_by_acl_l7)
 
 
-class DataManagerCacheTest(DataManagerTestBase, TestCase):
+class DataManagerCacheTest(DataManagerTestMixin, TestCase):
     def test_update_all_mac_cache(self):
         self.rd_manager.update_all_mac_cache()
 
@@ -393,7 +138,7 @@ class DataManagerCacheTest(DataManagerTestBase, TestCase):
         self.assertTrue(self.rd_manager.is_initialized_from_cached_data)
 
 
-class DataManagerTest(DataManagerTestBase, TestCase):
+class DataManagerTest(DataManagerTestMixin, TestCase):
     def test_get_device_view_data(self):
         ret = self.rd_manager.get_device_view_data()
         self.assertEqual(len(ret), 2)
@@ -425,7 +170,7 @@ class DataManagerTest(DataManagerTestBase, TestCase):
             self.assertIsNotNone(url)
 
 
-class MacControlRuleFromAclL7Test(DataManagerTestBase, TestCase):
+class MacControlRuleFromAclL7Test(DataManagerTestMixin, TestCase):
 
     def setUp(self):
         super().setUp()
