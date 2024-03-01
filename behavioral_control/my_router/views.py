@@ -395,15 +395,6 @@ def delete_domain_blacklist(request, router_id, domain_blacklist_id):
 
 
 class AddEditViewMixin(LoginRequiredMixin):
-    # form_class = DomainBlacklistEditForm
-    # form_weekdays_field_name = "weekdays"
-    # template_name = 'my_router/domain_blacklist-page.html'
-    # id_name = "domain_blacklist_id"
-    # success_url_name = "domain_blacklist-edit"
-    # form_description_for_edit = _("Edit Domain Blacklist")
-    # form_description_for_add = _("Add Domain Blacklist")
-    # has_apply_to = True
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._rd_manager = None
@@ -749,12 +740,27 @@ def list_acl_l7(request, router_id):
     mac_group_names = set(
         item for sublist in acl_l7_list for item in sublist['apply_to'])
 
-    return render(request, "my_router/protocol_control_list.html", {
+    context = {
         "router_id": router_id,
         "form_description": _("List of Protocol control"),
         "router_protocol_control_url": rd_manager.router_protocol_control_url,
         "mac_group_names": mac_group_names
-    })
+    }
+
+    need_display_router_mac_control_url = False
+
+    macs = []
+
+    for group_name in mac_group_names:
+        macs.extend(rd_manager.mac_groups[group_name])
+
+    if Device.objects.filter(mac__in=macs, block_mac_by_proto_ctrl=True).count():
+        need_display_router_mac_control_url = True
+
+    if need_display_router_mac_control_url:
+        context["router_mac_control_url"] = rd_manager.router_mac_control_url
+
+    return render(request, "my_router/protocol_control_list.html", context)
 
 
 @login_required

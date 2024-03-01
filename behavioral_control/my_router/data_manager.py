@@ -657,6 +657,10 @@ class RouterDataManager:
         return urljoin(self.router_instance.url, "/#/behavior/pro-control")
 
     @property
+    def router_mac_control_url(self):
+        return urljoin(self.router_instance.url, "/#/behavior/mac-control")
+
+    @property
     def router_mac_group_url(self):
         return urljoin(self.router_instance.url, "/#/behavior/mac-group")
 
