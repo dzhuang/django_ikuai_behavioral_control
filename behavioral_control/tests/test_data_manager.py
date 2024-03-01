@@ -166,6 +166,7 @@ class DataManagerTest(DataManagerTestMixin, TestCase):
     def test_get_ikuai_urls(self):
         for url in [self.rd_manager.router_domain_blacklist_url,
                     self.rd_manager.router_protocol_control_url,
+                    self.rd_manager.router_mac_control_url,
                     self.rd_manager.router_mac_group_url]:
             self.assertIsNotNone(url)
 

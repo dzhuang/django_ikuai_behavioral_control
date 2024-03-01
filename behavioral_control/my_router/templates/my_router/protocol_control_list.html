@@ -20,6 +20,10 @@
      href="{% url "acl_l7-edit" router_id -1 %}">{% trans "Add Protocol control" %}</a>
     <a class="btn btn-default"
      href="{{ router_protocol_control_url }}" target="_blank">{% trans "Edit Protocol control selection on router" %}</a>
+    {% if router_mac_control_url %}
+      <a class="btn btn-default"
+       href="{{ router_mac_control_url }}" target="_blank">{% trans "Edit MAC control on router" %}</a>
+    {% endif %}
   </div>
   <div>
   {% for mac_group_name in mac_group_names %}
