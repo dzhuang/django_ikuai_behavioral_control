@@ -1,18 +1,21 @@
 from unittest.mock import MagicMock, patch
+from copy import deepcopy
 
 from django.db.models.signals import post_save
 from django.test import TestCase
 from tests.factories import RouterFactory
 from tests.mixins import CacheMixin, MockRouterClientMixin
 
-from my_router.data_manager import RouterDataManager, RuleDataFilter
+from my_router.data_manager import RouterDataManager, RuleDataFilter, DEFAULT_CACHE
 from my_router.models import Device, Router
 from my_router.receivers import create_or_update_router_fetch_task
 
 MAC1 = "44:a8:bc:43:97:2d"
 MAC2 = "00:04:4a:86:32:9b"
+FAKE_MAC = "00:00:00:00:00:00"
 MAC_GROUP_1 = "IPAD"
 MAC_GROUP_2 = "ALL"
+IP_ADDR = "192.168.100.100"
 
 
 class DataManagerTestBase(CacheMixin, MockRouterClientMixin):
@@ -101,7 +104,7 @@ class DataManagerTestBase(CacheMixin, MockRouterClientMixin):
                 'data': [{'prio': 28,
                           'action': 'drop',
                           'app_proto': '所有协议',
-                          'src_addr': MAC_GROUP_1,
+                          'src_addr': f"{MAC_GROUP_1},{IP_ADDR}",
                           'dst_addr': '',
                           'week': '1234567',
                           'time': '00:00-23:59',
@@ -198,7 +201,7 @@ class DataManagerTestBase(CacheMixin, MockRouterClientMixin):
                           'comment': '',
                           'domain_group': '游戏网站',
                           'weekdays': '12345',
-                          'ipaddr': MAC_GROUP_1},
+                          'ipaddr': f"{MAC_GROUP_1},{IP_ADDR}"},
                          {'time': '00:00-23:59',
                           'id': 2,
                           'enabled': 'no',
@@ -219,7 +222,7 @@ class DataManagerTestBase(CacheMixin, MockRouterClientMixin):
                           'time': '00:00-23:59',
                           'domain': 'foo.bar.com,bar.foo.com',
                           'mode': 0},
-                         {'ip_addr': MAC_GROUP_1,
+                         {'ip_addr': f"{MAC_GROUP_1},{IP_ADDR}",
                           'id': 2,
                           'enabled': 'yes',
                           'week': '1234567',
@@ -329,6 +332,31 @@ class DataManagerCacheTest(DataManagerTestBase, TestCase):
 
         for mac in [MAC1, MAC2]:
             self.assertIn(mac, ret.keys())
+
+    def test_get_device_rule_data_with_device_offline(self):
+        self.rd_manager.update_all_mac_cache()
+        self.rd_manager.cache_each_device_info()
+
+        # Add none exist mac to all_mac_cache
+        all_mac_list = list(self.rd_manager.get_cached_all_mac())
+        all_mac_list.append(FAKE_MAC)
+        DEFAULT_CACHE.set(self.rd_manager.all_mac_cache_key, all_mac_list)
+
+        self.rd_manager.reset_property_cache()
+        device_data = deepcopy(self.default_ikuai_client_list_monitor_lanip)
+        device_data["total"] = 1
+        device_data["data"].pop(0)
+
+        self.mock_client.list_monitor_lanip.return_value = device_data
+
+        ret = self.rd_manager.get_device_rule_data()
+
+        for mac in [MAC1, MAC2]:
+            self.assertIn(mac, ret.keys())
+
+        self.assertFalse(ret[MAC1]["online"])
+
+        self.assertNotIn(FAKE_MAC, ret.keys())
 
     def cache_instance_properties(self):
         # this will also cache the data in django cache
