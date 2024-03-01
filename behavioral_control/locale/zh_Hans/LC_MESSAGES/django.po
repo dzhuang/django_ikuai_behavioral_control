@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-02-19 21:35+0800\n"
+"POT-Creation-Date: 2024-03-01 19:49+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -105,9 +105,6 @@ msgstr "结束时间"
 msgid "Weekdays"
 msgstr ""
 
-msgid "Apply to"
-msgstr "应用于"
-
 msgid "Enabled"
 msgstr "已启用"
 
@@ -119,6 +116,9 @@ msgstr "更新"
 
 msgid "\"end_time\" should be greater than \"start_time\""
 msgstr "\"end_time\" 应大于 \"start_time\""
+
+msgid "Apply to"
+msgstr "应用于"
 
 msgid "Router name"
 msgstr "路由器名称"
@@ -163,8 +163,8 @@ msgstr "路由器"
 msgid "Routers"
 msgstr "路由器"
 
-msgid "Fetch info and set cache"
-msgstr "抓取信息并缓存"
+msgid "Fetch info and set cache for %s"
+msgstr "抓取%s的信息并缓存"
 
 msgid "Device name"
 msgstr "设备名称"
@@ -189,6 +189,12 @@ msgstr "该设备将不会在默认列表中列出，也不会在应用规则时
 
 msgid "Added datetime"
 msgstr "添加的时间"
+
+msgid "Control MAC via Proto Ctrl"
+msgstr "用协议控制来设定MAC规则"
+
+msgid "Banning all protocols in acl_l7 will result in MAC blocking"
+msgstr "在协议控制中禁止'所有协议'将会阻断MAC"
 
 msgid "Device"
 msgstr "设备"
@@ -324,6 +330,9 @@ msgstr "在路由器上编辑协议控制选择"
 
 msgid "Add Protocol control"
 msgstr "添加协议控制"
+
+msgid "Edit MAC control on router"
+msgstr "从路由器上编辑MAC控制信息"
 
 msgid "Protocol control"
 msgstr "协议控制"
