@@ -1,13 +1,11 @@
-from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 from django.db.models.signals import post_save
 from django.test import TestCase
-from django.utils import timezone
 from tests.factories import RouterFactory
 from tests.mixins import CacheMixin, MockRouterClientMixin
 
-from my_router.data_manager import RouterDataManager
+from my_router.data_manager import RouterDataManager, RuleDataFilter
 from my_router.models import Device, Router
 from my_router.receivers import create_or_update_router_fetch_task
 
@@ -263,7 +261,7 @@ class DataManagerTestBase(CacheMixin, MockRouterClientMixin):
         post_save.connect(create_or_update_router_fetch_task, sender=Router)
 
 
-class DataManagerTest(DataManagerTestBase, TestCase):
+class DataManagerPropertiesTest(DataManagerTestBase, TestCase):
 
     def test_device_and_dict(self):
         self.assertIsNone(self.rd_manager._devices)
@@ -311,6 +309,14 @@ class DataManagerTest(DataManagerTestBase, TestCase):
         self.assertIsNotNone(self.rd_manager._url_black_list)
         self.assertIsNotNone(self.rd_manager.url_black_list)
 
+    def test_macs_block_mac_by_acl_l7(self):
+        self.assertIsNone(self.rd_manager._macs_block_mac_by_acl_l7)
+        self.assertIsNotNone(self.rd_manager.macs_block_mac_by_acl_l7)
+        self.assertIsNotNone(self.rd_manager._macs_block_mac_by_acl_l7)
+        self.assertIsNotNone(self.rd_manager.macs_block_mac_by_acl_l7)
+
+
+class DataManagerCacheTest(DataManagerTestBase, TestCase):
     def test_update_all_mac_cache(self):
         self.rd_manager.update_all_mac_cache()
 
@@ -324,6 +330,42 @@ class DataManagerTest(DataManagerTestBase, TestCase):
         for mac in [MAC1, MAC2]:
             self.assertIn(mac, ret.keys())
 
+    def cache_instance_properties(self):
+        # this will also cache the data in django cache
+        self.assertIsNotNone(self.rd_manager.devices)
+        self.assertIsNotNone(self.rd_manager.device_dict)
+        self.assertIsNotNone(self.rd_manager.online_mac_list)
+        self.assertIsNotNone(self.rd_manager.mac_groups_list)
+        self.assertIsNotNone(self.rd_manager.mac_groups)
+        self.assertIsNotNone(self.rd_manager.mac_groups_reverse)
+        self.assertIsNotNone(self.rd_manager.domain_blacklist)
+        self.assertIsNotNone(self.rd_manager.url_black_list)
+        self.assertIsNotNone(self.rd_manager.macs_block_mac_by_acl_l7)
+
+    def test_reset_property_cache(self):
+        self.cache_instance_properties()
+
+        self.rd_manager.reset_property_cache()
+
+        self.assertIsNone(self.rd_manager._devices)
+        self.assertIsNone(self.rd_manager._device_dict)
+        self.assertIsNone(self.rd_manager._online_mac_list)
+        self.assertIsNone(self.rd_manager._mac_groups_list)
+        self.assertIsNone(self.rd_manager._mac_groups_map)
+        self.assertIsNone(self.rd_manager._mac_groups_map_reverse)
+        self.assertIsNone(self.rd_manager._domain_black_list)
+        self.assertIsNone(self.rd_manager._url_black_list)
+        self.assertIsNone(self.rd_manager._macs_block_mac_by_acl_l7)
+
+    def test_init_data_from_cache(self):
+        self.cache_instance_properties()
+        self.rd_manager.reset_property_cache()
+
+        self.rd_manager.init_data_from_cache()
+        self.assertTrue(self.rd_manager.is_initialized_from_cached_data)
+
+
+class DataManagerTest(DataManagerTestBase, TestCase):
     def test_get_device_view_data(self):
         ret = self.rd_manager.get_device_view_data()
         self.assertEqual(len(ret), 2)
@@ -347,6 +389,12 @@ class DataManagerTest(DataManagerTestBase, TestCase):
         for info_name in [
                 "device", "domain_blacklist", "url_black", "acl_l7", "mac_group"]:
             self.rd_manager.get_view_data(info_name)
+
+    def test_get_ikuai_urls(self):
+        for url in [self.rd_manager.router_domain_blacklist_url,
+                    self.rd_manager.router_protocol_control_url,
+                    self.rd_manager.router_mac_group_url]:
+            self.assertIsNotNone(url)
 
 
 class MacControlRuleFromAclL7Test(DataManagerTestBase, TestCase):
@@ -402,31 +450,6 @@ class MacControlRuleFromAclL7Test(DataManagerTestBase, TestCase):
     def test_update_mac_control_rule_from_acl_l7(self):
         self.rd_manager.update_mac_control_rule_from_acl_l7()
 
-    @staticmethod
-    def get_local_time(time_str):
-        current_tz = timezone.get_current_timezone()
-
-        formats = ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%H:%M:%S", "%H:%M"]
-
-        for fmt in formats:
-            try:
-                # 尝试解析时间字符串
-                time = datetime.strptime(time_str, fmt)
-                # 如果时间字符串不包含日期，则添加当前日期
-                if fmt in ["%H:%M:%S", "%H:%M"]:
-                    now = timezone.now()
-                    time = time.replace(year=now.year, month=now.month,
-                                        day=now.day)
-                break
-            except ValueError:
-                continue
-        else:
-            raise ValueError(f"时间字符串 '{time_str}' 不符合预期的格式")
-
-        local_time = timezone.make_aware(time, current_tz)
-
-        return local_time
-
     def test_update_mac_control_rule_from_acl_l7_active_mac_rule_empty(self):
         self.fake_set_mac_acl(empty=True)
 
@@ -453,7 +476,7 @@ class MacControlRuleFromAclL7Test(DataManagerTestBase, TestCase):
         self.mock_add_mac_rule.assert_not_called()
         self.mock_remove_mac_rule.assert_called_once()
 
-    def test_update_with_no_curent_and_next_time_range(self):
+    def test_update_with_no_current_and_next_time_range(self):
         self.mock_client.list_acl_l7.return_value = {
             'total': 1,
             'data': [{'prio': 28,
@@ -554,3 +577,29 @@ class MacControlRuleFromAclL7Test(DataManagerTestBase, TestCase):
             self.rd_manager.remove_active_acl_mac_rule_of_device(mac)
 
         self.mock_client.del_acl_mac.assert_called_once()
+
+
+class RuleDataFilterTest(TestCase):
+    def test_day_with_no_time_rule(self):
+        rule_data = [{'priority': 15,
+                      'action': 'accept',
+                      'app_proto': '所有协议',
+                      'weekdays': '12345',
+                      'time': '10:00-11:59',
+                      'id': 2,
+                      'enabled': False,
+                      'name': '允许上网'},
+                     {'priority': 20,
+                      'action': 'drop',
+                      'app_proto': '所有协议',
+                      'weekdays': '12345',
+                      'time': '00:00-23:59',
+                      'enabled': True,
+                      'name': '阻断全部上网'}
+                     ]
+
+        rdf = RuleDataFilter(rule_data)
+        days_str_with_strategies = "".join(
+            [d["day"] for d in rdf.dominant_strategies])
+        self.assertTrue('6' not in days_str_with_strategies)
+        self.assertTrue('7' not in days_str_with_strategies)

@@ -1,7 +1,9 @@
+from datetime import datetime
 from unittest import mock
 
 from django.test import Client, override_settings
 from django.urls import reverse
+from django.utils import timezone
 from tests.factories import RouterFactory, UserFactory
 
 
@@ -192,3 +194,28 @@ class MockRouterClientMixin:
     def fetch_cached_info_url(self, info_name="device", router_id=None):
         router_id = router_id or self.router.id
         return reverse("fetch-cached-info", args=(router_id, info_name,))
+
+    @staticmethod
+    def get_local_time(time_str):
+        current_tz = timezone.get_current_timezone()
+
+        formats = ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%H:%M:%S", "%H:%M"]
+
+        for fmt in formats:
+            try:
+                # 尝试解析时间字符串
+                time = datetime.strptime(time_str, fmt)
+                # 如果时间字符串不包含日期，则添加当前日期
+                if fmt in ["%H:%M:%S", "%H:%M"]:
+                    now = timezone.now()
+                    time = time.replace(year=now.year, month=now.month,
+                                        day=now.day)
+                break
+            except ValueError:
+                continue
+        else:
+            raise ValueError(f"时间字符串 '{time_str}' 不符合预期的格式")
+
+        local_time = timezone.make_aware(time, current_tz)
+
+        return local_time

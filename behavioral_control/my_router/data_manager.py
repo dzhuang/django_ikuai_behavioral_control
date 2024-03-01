@@ -390,9 +390,8 @@ class RouterDataManager:
             # fixme: default number of devices is maximum 100
             self._devices = serializer.data["data"]
 
-            if not self.is_initialized_from_cached_data:
-                self.update_device_db_instances()
-                DEFAULT_CACHE.set(self.device_list_cache_key, self._devices)
+            self.update_device_db_instances()
+            DEFAULT_CACHE.set(self.device_list_cache_key, self._devices)
 
         return self._devices
 
@@ -416,9 +415,9 @@ class RouterDataManager:
                 router=self.router_instance,
                 block_mac_by_proto_ctrl=True).values_list("mac", flat=True))
             self._macs_block_mac_by_acl_l7 = ret
-            if not self.is_initialized_from_cached_data:
-                DEFAULT_CACHE.set(
-                    self.macs_block_mac_by_acl_l7_cache_key, ret)
+
+            DEFAULT_CACHE.set(
+                self.macs_block_mac_by_acl_l7_cache_key, ret)
         return self._macs_block_mac_by_acl_l7
 
     @property
@@ -435,20 +434,10 @@ class RouterDataManager:
         all_cached_macs = self.get_cached_all_mac()
         all_cached_macs = all_cached_macs | set(self.online_mac_list)
 
-        # this should be done with a test
-        def check_no_nesting(input_list):
-            # 遍历列表中的每个元素
-            for item in input_list:
-                # 如果元素是列表，则返回False
-                if isinstance(item, list):
-                    return False
-            # 如果所有元素都不是列表，则返回True
-            return True
+        for mac in all_cached_macs:
+            assert isinstance(mac, str)
 
-        assert check_no_nesting(all_cached_macs)
-
-        if not self.is_initialized_from_cached_data:
-            DEFAULT_CACHE.set(self.all_mac_cache_key, all_cached_macs)
+        DEFAULT_CACHE.set(self.all_mac_cache_key, all_cached_macs)
 
     def get_cached_device_info(self, mac):
         return DEFAULT_CACHE.get(self.get_device_cache_key(mac))
@@ -480,8 +469,7 @@ class RouterDataManager:
             # of the serializer later.
             self._mac_groups_list = serializer.data
 
-            if not self.is_initialized_from_cached_data:
-                DEFAULT_CACHE.set(self.mac_groups_cache_key, self._mac_groups_list)
+            DEFAULT_CACHE.set(self.mac_groups_cache_key, self._mac_groups_list)
 
         return self._mac_groups_list
 
@@ -510,8 +498,7 @@ class RouterDataManager:
             serializer.is_valid(raise_exception=True)
             self._acl_l7_list = serializer.data["data"]
 
-            if not self.is_initialized_from_cached_data:
-                DEFAULT_CACHE.set(self.acl_l7_list_cache_key, self._acl_l7_list)
+            DEFAULT_CACHE.set(self.acl_l7_list_cache_key, self._acl_l7_list)
 
         return self._acl_l7_list
 
@@ -525,9 +512,8 @@ class RouterDataManager:
             serializer.is_valid(raise_exception=True)
             self._url_black_list = serializer.data["data"]
 
-            if not self.is_initialized_from_cached_data:
-                DEFAULT_CACHE.set(
-                    self.url_black_list_cache_key, self._url_black_list)
+            DEFAULT_CACHE.set(
+                self.url_black_list_cache_key, self._url_black_list)
 
         return self._url_black_list
 
@@ -541,9 +527,8 @@ class RouterDataManager:
             serializer.is_valid(raise_exception=True)
             self._domain_black_list = serializer.data["data"]
 
-            if not self.is_initialized_from_cached_data:
-                DEFAULT_CACHE.set(
-                    self.domain_blacklist_cache_key, self._domain_black_list)
+            DEFAULT_CACHE.set(
+                self.domain_blacklist_cache_key, self._domain_black_list)
 
         return self._domain_black_list
 
@@ -808,7 +793,7 @@ class RouterDataManager:
             now_datetime = timezone.now()
 
         # 检查now_datetime是否为tz-aware
-        if now_datetime.tzinfo is None or now_datetime.tzinfo.utcoffset(
+        if now_datetime.tzinfo is None or now_datetime.tzinfo.utcoffset(  # pragma: no cover  # noqa
                 now_datetime) is None:
             raise ValueError("now_datetime must be timezone aware")
 
@@ -870,19 +855,16 @@ class RouterDataManager:
                 if need_update_active_rule:
                     self.add_acl_mac_rule(current_tr_acl_mac_data)
 
-                # This will not happen, at least equals itself
-                if next_tr is None:
-                    logger.debug("next_tr is None. nothing to do")
+                assert next_tr is not None
 
+                logger.debug(f"next_tr is '{next_tr}'")
+                if current_tr == next_tr:
+                    logger.debug(
+                        "current_tr and next_tr are the same, nothing to do")
+                    pass
                 else:
-                    logger.debug(f"next_tr is '{next_tr}'")
-                    if current_tr == next_tr:
-                        logger.debug(
-                            "current_tr and next_tr are the same, nothing to do")
-                        pass
-                    else:
-                        logger.debug(
-                            "need to create a task to add acl_mac rule for next_tr")
+                    logger.debug(
+                        "need to create a task to add acl_mac rule for next_tr")
 
             else:
                 assert current_tr is None
