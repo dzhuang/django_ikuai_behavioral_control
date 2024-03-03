@@ -1,14 +1,17 @@
 from unittest.mock import MagicMock, patch
 
+from django.db.models.signals import post_save
 from django.test import TestCase
 from django.urls import reverse
 from factories import RouterFactory
-from tests.mixins import DataManagerTestMixin, RequestTestMixin
+from tests.mixins import MockRouterClientMixin, RequestTestMixin
 
+from my_router.models import Router
+from my_router.receivers import create_or_update_router_fetch_task
 from my_router.views import fetch_new_info_save_and_set_cache
 
 
-class HomeViewTest(DataManagerTestMixin, RequestTestMixin, TestCase):
+class HomeViewTest(MockRouterClientMixin, RequestTestMixin, TestCase):
     @property
     def home_url(self):
         return reverse("home")
@@ -18,6 +21,7 @@ class HomeViewTest(DataManagerTestMixin, RequestTestMixin, TestCase):
         self.assertEqual(resp.status_code, 302)
 
     def test_get_home_ok_more_than_1_routers(self):
+        post_save.disconnect(create_or_update_router_fetch_task, sender=Router)
         RouterFactory()
         resp = self.client.get(self.home_url)
         self.assertEqual(resp.status_code, 302)
@@ -28,7 +32,7 @@ class HomeViewTest(DataManagerTestMixin, RequestTestMixin, TestCase):
         self.assertEqual(resp.status_code, 302)
 
 
-class FetchNewInfoSaveAndSetCacheTest(DataManagerTestMixin, TestCase):
+class FetchNewInfoSaveAndSetCacheTest(MockRouterClientMixin, TestCase):
     # testing my_router.views.fetch_new_info_save_and_set_cache
 
     @patch('my_router.views.RouterDataManager')
@@ -90,7 +94,7 @@ class FetchNewInfoSaveAndSetCacheTest(DataManagerTestMixin, TestCase):
 
 
 @patch('my_router.views.RouterDataManager')
-class FetchCachedInfoTest(DataManagerTestMixin, RequestTestMixin, TestCase):
+class FetchCachedInfoTest(MockRouterClientMixin, RequestTestMixin, TestCase):
     def get_fetch_info_url(self, info_name, router_id=None):
         router_id = router_id or self.router.id
         return reverse("fetch-cached-info", args=(router_id, info_name))
