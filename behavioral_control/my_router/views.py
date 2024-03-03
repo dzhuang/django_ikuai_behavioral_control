@@ -274,8 +274,11 @@ class DeviceUpdateView(LoginRequiredMixin, UpdateView):
             if form.has_changed():
                 self._remote_updated = self.update_router_data(
                     form.changed_data, data)
-            messages.add_message(
-                self.request, messages.INFO, _("Successfully updated device."))
+                messages.add_message(
+                    self.request, messages.INFO, _("Device not changed."))
+            else:
+                messages.add_message(
+                    self.request, messages.INFO, _("Successfully updated device."))
         except Exception as e:
             import traceback
             traceback.print_exc()

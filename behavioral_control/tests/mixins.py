@@ -232,7 +232,7 @@ class MockRouterClientMixin:
         return local_time
 
 
-class DataManagerTestMixin(CacheMixin, MockRouterClientMixin):
+class DataManagerDefaultRetMixin:
     @property
     def default_ikuai_client_list_monitor_lanip(self):
         return DEFAULT_IKUAI_CLIENT_LIST_MONITOR_LANIP
@@ -253,6 +253,9 @@ class DataManagerTestMixin(CacheMixin, MockRouterClientMixin):
     def default_ikuai_client_list_url_black(self):
         return DEFAULT_IKUAI_CLIENT_LIST_URL_BLACK
 
+
+class DataManagerTestMixin(
+        DataManagerDefaultRetMixin, CacheMixin, MockRouterClientMixin):
     def setUp(self):
         super().setUp()
 
