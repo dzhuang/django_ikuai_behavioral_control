@@ -59,11 +59,13 @@ class HomeViewTest(MockRouterClientMixin, RequestTestMixin, TestCase):
         RouterFactory()
         resp = self.client.get(self.home_url)
         self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp.url, reverse("profile"))
 
     def test_login_required(self):
         self.client.logout()
         resp = self.client.get(self.home_url)
         self.assertEqual(resp.status_code, 302)
+        self.assertTrue(resp.url.startswith(reverse("login")))
 
 
 class FetchNewInfoSaveAndSetCacheTest(MockRouterDataManagerViewMixin, TestCase):
@@ -170,6 +172,7 @@ class FetchCachedInfoTest(
         self.client.logout()
         resp = self.client.get(self.get_fetch_info_url("device"))
         self.assertEqual(resp.status_code, 302)
+        self.assertTrue(resp.url.startswith(reverse("login")))
 
     def test_post_not_allowed(self):
         resp = self.client.post(self.get_fetch_info_url("device"), data={})
@@ -211,6 +214,7 @@ class DeviceUpdateViewTest(ViewTestMixin, RequestTestMixin, TestCase):
         self.client.logout()
         resp = self.client.get(self.get_update_device_url())
         self.assertEqual(resp.status_code, 302)
+        self.assertTrue(resp.url.startswith(reverse("login")))
 
     def test_post_not_changed(self):
         url = self.get_update_device_url()
@@ -292,6 +296,7 @@ class DomainBlacklistEditView(
         self.client.logout()
         resp = self.client.get(self.get_update_domain_blacklist_url())
         self.assertEqual(resp.status_code, 302)
+        self.assertTrue(resp.url.startswith(reverse("login")))
 
 
 class AclL7EditView(
@@ -314,6 +319,7 @@ class AclL7EditView(
         self.client.logout()
         resp = self.client.get(self.get_update_acl_l7_url())
         self.assertEqual(resp.status_code, 302)
+        self.assertTrue(resp.url.startswith(reverse("login")))
 
 
 class MacGroupEditView(
@@ -336,3 +342,38 @@ class MacGroupEditView(
         self.client.logout()
         resp = self.client.get(self.get_update_mac_group_url())
         self.assertEqual(resp.status_code, 302)
+        self.assertTrue(resp.url.startswith(reverse("login")))
+
+
+class ListViewTest(ViewTestMixin, RequestTestMixin, TestCase):
+    def get_list_view_url(self, view_name):
+        return reverse(view_name, args=(self.router.id,))
+
+    def get_list_view(self, view_name):
+        return self.client.get(self.get_list_view_url(view_name))
+
+    def test_list(self):
+        for name in ["device-list", "mac_group-list", "acl_l7-list",
+                     "domain_blacklist-list"]:
+            resp = self.get_list_view(name)
+            self.assertEqual(resp.status_code, 200)
+
+    def test_list_not_authenticated(self):
+        self.client.logout()
+        for name in ["device-list", "mac_group-list", "acl_l7-list",
+                     "domain_blacklist-list"]:
+            with self.subTest(name=name):
+                resp = self.get_list_view(name)
+                self.assertEqual(resp.status_code, 302)
+                self.assertTrue(resp.url.startswith(reverse("login")))
+
+    def test_list_device(self):
+        resp = self.get_list_view("acl_l7-list")
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotIn("router_mac_control_url", resp.context)
+
+        self.first_device.block_mac_by_proto_ctrl = True
+        self.first_device.save()
+        resp = self.get_list_view("acl_l7-list")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("router_mac_control_url", resp.context)
