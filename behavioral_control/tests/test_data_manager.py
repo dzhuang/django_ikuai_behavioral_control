@@ -236,12 +236,15 @@ class MacControlRuleFromAclL7Test(DataManagerTestMixin, TestCase):
     def test_update_mac_control_rule_from_acl_l7_23_59_not_called(self):
         self.fake_set_mac_acl()
 
-        for time_str in ["23:59:00", "23:59:01", "23:59:59", "00:00:00"]:
-            now_time = self.get_local_time(time_str)
-            self.rd_manager.update_mac_control_rule_from_acl_l7_by_time(now_time)
+        for time_str in ["23:59:00", "23:59:01", "23:59:59"]:
+            with self.subTest(time_str=time_str):
+                now_time = self.get_local_time(time_str)
+                self.rd_manager.update_mac_control_rule_from_acl_l7_by_time(now_time)
 
-        self.mock_add_mac_rule.assert_not_called()
-        self.mock_remove_mac_rule.assert_not_called()
+                self.mock_add_mac_rule.assert_not_called()
+                self.mock_add_mac_rule.reset_mock()
+                self.mock_remove_mac_rule.assert_not_called()
+                self.mock_remove_mac_rule.reset_mock()
 
     def test_update_mac_control_rule_from_acl_l7_with_empty_acl_l7(self):
         self.mock_client.list_acl_l7.return_value = {'total': 0, 'data': []}

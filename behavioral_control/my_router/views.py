@@ -16,14 +16,11 @@ from django.urls import reverse, reverse_lazy
 from django.utils.translation import gettext_lazy as _
 from django.views.generic.edit import FormView, UpdateView
 
-from my_router.constants import DEFAULT_CACHE
 from my_router.data_manager import RouterDataManager
 from my_router.forms import BaseEditWithApplyToForm
 from my_router.models import Device, Router
 from my_router.utils import (StyledForm, StyledModelForm,
-                             find_data_with_id_from_list_of_dict,
-                             get_router_all_devices_mac_cache_key,
-                             get_router_device_cache_key)
+                             find_data_with_id_from_list_of_dict)
 
 
 def routers_context_processor(request):
@@ -34,6 +31,7 @@ def routers_context_processor(request):
     }
 
 
+@login_required
 def home(request):
     routers = Router.objects.all()
 
@@ -150,10 +148,11 @@ class DeviceUpdateView(LoginRequiredMixin, UpdateView):
         router_id = self.kwargs["router_id"]
         self.rd_manager = RouterDataManager(router_id=router_id)
 
-        device_with_rules = self.rd_manager.get_device_rule_data()[self.object.mac]
-        self._original_data = deepcopy(device_with_rules)
-
         try:
+            device_with_rules = self.rd_manager.get_device_rule_data()[
+                self.object.mac]
+            self._original_data = deepcopy(device_with_rules)
+
             kwargs["reject"] = bool(device_with_rules["reject"])
 
             mac_groups = list(self.rd_manager.mac_groups.keys())
@@ -312,26 +311,6 @@ def turn_str_time_to_time_obj(str_time):
         return None
     hour, minute = str_time.split(":")
     return time(int(hour), int(minute))
-
-
-def get_mac_choice_tuple(router: Router) -> list:
-    all_mac_cache_key = get_router_all_devices_mac_cache_key(router.id)
-    all_macs = DEFAULT_CACHE.get(all_mac_cache_key)
-    apply_to_choices = []
-    ignored_device_mac = (
-        Device.objects.filter(
-            router=router, ignore=True).values_list("mac", flat=True))
-    for mac in all_macs:
-        if mac in ignored_device_mac:
-            continue
-
-        _host_info = DEFAULT_CACHE.get(get_router_device_cache_key(router.id, mac))
-        if not _host_info:
-            continue
-
-        apply_to_choices.append((mac, _host_info["hostname"]))
-
-    return apply_to_choices
 
 
 @login_required
@@ -755,7 +734,8 @@ def list_acl_l7(request, router_id):
     macs = []
 
     for group_name in mac_group_names:
-        macs.extend(rd_manager.mac_groups[group_name])
+        if group_name in rd_manager.mac_groups:
+            macs.extend(rd_manager.mac_groups[group_name])
 
     if Device.objects.filter(mac__in=macs, block_mac_by_proto_ctrl=True).count():
         need_display_router_mac_control_url = True
