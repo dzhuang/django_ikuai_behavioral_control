@@ -1,4 +1,4 @@
-django <5
+django <6
 requests
 celery
 django-celery-results
@@ -12,7 +12,7 @@ django-crispy-forms<2
 django-npm
 psycopg2-binary
 
-pyikuai
+pyikuai>=0.4.0
 
 
 # For running jupyter notebook
