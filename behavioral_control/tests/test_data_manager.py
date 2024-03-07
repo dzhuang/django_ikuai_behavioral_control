@@ -377,6 +377,122 @@ class RuleDataFilterTest(TestCase):
 
         rdf = RuleDataFilter(rule_data)
         days_str_with_strategies = "".join(
-            [d["day"] for d in rdf.dominant_strategies])
+            [d["day"] for d in rdf.active_drop_all_protocol_strategies])
         self.assertTrue('6' not in days_str_with_strategies)
         self.assertTrue('7' not in days_str_with_strategies)
+
+    def test_drop_all_strategy_not_highest_prio(self):
+        rule_data = [
+            {'priority': 1,
+             'action': 'drop',
+             'app_proto': '其它协议',
+             'weekdays': '1',
+             'time': '00:00-03:00',
+             'id': 2,
+             'enabled': True,
+             'name': '其它协议'},
+            {'priority': 15,
+             'action': 'drop',
+             'app_proto': '所有协议',
+             'weekdays': '1',
+             'time': '00:00-03:00',
+             'id': 2,
+             'enabled': True,
+             'name': '阻断全部上网'},
+            {'priority': 15,
+             'action': 'accept',
+             'app_proto': '国内视频',
+             'weekdays': '1',
+             'time': '00:00-23:59',
+             'enabled': True,
+             'name': '允许国内视频'}
+        ]
+
+        rdf = RuleDataFilter(rule_data)
+
+        drop_all_protocol_strategies = rdf.active_drop_all_protocol_strategies
+        self.assertEqual(len(drop_all_protocol_strategies), 1)
+
+        first_strategy = drop_all_protocol_strategies[0]
+        self.assertEqual(first_strategy["priority"], 15)
+
+    def test_no_drop_all_strategy(self):
+        rule_data = [
+            {'priority': 1,
+             'action': 'drop',
+             'app_proto': '其它协议',
+             'weekdays': '1',
+             'time': '00:00-03:00',
+             'id': 2,
+             'enabled': True,
+             'name': '其它协议'},
+            {'priority': 15,
+             'action': 'drop',
+             'app_proto': '所有协议',
+             'weekdays': '1',
+             'time': '00:00-03:00',
+             'id': 2,
+             'enabled': False,
+             'name': '阻断全部上网'},
+            {'priority': 15,
+             'action': 'accept',
+             'app_proto': '国内视频',
+             'weekdays': '1',
+             'time': '00:00-23:59',
+             'enabled': True,
+             'name': '允许国内视频'}
+        ]
+
+        rdf = RuleDataFilter(rule_data)
+
+        drop_all_protocol_strategies = rdf.active_drop_all_protocol_strategies
+        self.assertEqual(len(drop_all_protocol_strategies), 0)
+
+    def test_no_enabled_strategy(self):
+        rule_data = [
+            {'priority': 1,
+             'action': 'drop',
+             'app_proto': '其它协议',
+             'weekdays': '1',
+             'time': '00:00-03:00',
+             'id': 2,
+             'enabled': False,
+             'name': '其它协议'},
+            {'priority': 15,
+             'action': 'drop',
+             'app_proto': '所有协议',
+             'weekdays': '1',
+             'time': '00:00-03:00',
+             'id': 2,
+             'enabled': False,
+             'name': '阻断全部上网'},
+            {'priority': 15,
+             'action': 'accept',
+             'app_proto': '国内视频',
+             'weekdays': '1',
+             'time': '00:00-23:59',
+             'enabled': False,
+             'name': '允许国内视频'}
+        ]
+
+        rdf = RuleDataFilter(rule_data)
+
+        drop_all_protocol_strategies = rdf.active_drop_all_protocol_strategies
+        self.assertEqual(len(drop_all_protocol_strategies), 0)
+
+    def test_neither_drop_all_strategy_nor_accept(self):
+        rule_data = [
+            {'priority': 1,
+             'action': 'drop',
+             'app_proto': '其它协议',
+             'weekdays': '1',
+             'time': '00:00-03:00',
+             'id': 2,
+             'enabled': True,
+             'name': '其它协议'}
+        ]
+
+        rdf = RuleDataFilter(rule_data)
+
+        drop_all_protocol_strategies = rdf.active_drop_all_protocol_strategies
+        self.assertEqual(len(drop_all_protocol_strategies), 0)

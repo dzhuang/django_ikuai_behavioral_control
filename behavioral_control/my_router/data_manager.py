@@ -33,8 +33,8 @@ class RuleDataFilter:
     def __init__(self, rule_data):
         rule_data = [r for r in rule_data if r["enabled"] is True]
         self.rule_data = rule_data
-        self.dominant_strategies = (
-            self.split_and_identify_dominant_strategies_weekly())
+        self.active_drop_all_protocol_strategies = (
+            self.split_and_identify_active_drop_all_protocol_strategies_weekly())
 
     def _merge_daily_adjacent_strategies(self, strategies, extra_ignored_keys=None):
         extra_ignored_keys = extra_ignored_keys or []
@@ -78,7 +78,7 @@ class RuleDataFilter:
 
         return merged_strategies
 
-    def split_and_identify_dominant_strategies_weekly(self):
+    def split_and_identify_active_drop_all_protocol_strategies_weekly(self):
         weekdays = "1234567"  # From Monday to Sunday
         rule_data = deepcopy(self.rule_data)
 
@@ -114,20 +114,25 @@ class RuleDataFilter:
                                 d['time'].split('-')[1], '%H:%M') >= end_dt)
                 ]
 
-                if strategies_in_range:
-                    # Select the highest priority strategy for this time range
-                    highest_priority_strategy = min(
-                        strategies_in_range, key=lambda x: x['priority'])
+                strategies_in_range = sorted(
+                    strategies_in_range, key=lambda x: (
+                        x['priority'], x['action'] != 'drop'))
 
-                    weekly_dominant_strategies[day].append({
-                        'day': day,
-                        'start_time': start,
-                        'end_time': end,
-                        'policy': highest_priority_strategy['name'],
-                        'priority': highest_priority_strategy['priority'],
-                        'action': highest_priority_strategy['action'],
-                        'app_proto': highest_priority_strategy['app_proto']
-                    })
+                for strategy in strategies_in_range:
+                    if strategy["action"] == "accept":
+                        break
+
+                    if strategy["app_proto"] == "所有协议":
+                        weekly_dominant_strategies[day].append({
+                            'day': day,
+                            'start_time': start,
+                            'end_time': end,
+                            'policy': strategy['name'],
+                            'priority': strategy['priority'],
+                            'action': strategy['action'],
+                            'app_proto': strategy['app_proto']
+                        })
+                        break
 
         # Convert the dictionary to a list
         dominant_strategies_weekly = []
@@ -137,13 +142,8 @@ class RuleDataFilter:
         return dominant_strategies_weekly
 
     def get_dropping_all_proto_strategies(self):
-        dropping_all_proto_strategies = [
-            strategy for strategy in self.dominant_strategies
-            if strategy['app_proto'] == '所有协议' and strategy['action'] == 'drop'
-        ]
-
         merge_strategies = self._merge_daily_adjacent_strategies(
-            dropping_all_proto_strategies,
+            self.active_drop_all_protocol_strategies,
             extra_ignored_keys=["priority", "policy", "action", "app_proto"]
         )
 
