@@ -369,7 +369,7 @@ NOTEBOOK_ARGUMENTS = [
     '--NotebookApp.password', ''
 ]
 
-if not sys.platform.lower().startswith("win"):
+if not sys.platform.lower().startswith("win"):  # pragma: no cover
     NOTEBOOK_ARGUMENTS.extend(['--ip', '0.0.0.0'])
 
 IPYTHON_KERNEL_DISPLAY_NAME = 'Django Kernel'

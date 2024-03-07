@@ -11,7 +11,6 @@ from my_router.constants import (
     ROUTER_DEVICES_CACHE_KEY_PATTERN,
     ROUTER_DOMAIN_BLACKLIST_CACHE_KEY_PATTERN,
     ROUTER_URL_BLACK_LIST_CACHE_KEY_PATTERN, days_const)
-from my_router.fields import mac_re
 
 
 class StyledFormMixin:
@@ -40,10 +39,6 @@ class StyledModelForm(StyledFormMixin, forms.ModelForm):
 
 class CacheDataDoesNotExist(Exception):
     pass
-
-
-def is_valid_mac_address(mac_address):
-    return bool(mac_re.match(mac_address))
 
 
 def get_router_device_cache_key(router_id, mac_address):

@@ -306,13 +306,6 @@ class DeviceUpdateView(LoginRequiredMixin, UpdateView):
         fetch_new_info_save_and_set_cache(router=self.object.router)
 
 
-def turn_str_time_to_time_obj(str_time):
-    if not str_time.strip():
-        return None
-    hour, minute = str_time.split(":")
-    return time(int(hour), int(minute))
-
-
 @login_required
 def list_devices(request, router_id):
     return render(request, "my_router/device-list.html", {
@@ -452,6 +445,10 @@ class AddEditViewMixin(LoginRequiredMixin):
             'weekdays_field_name': self.form_weekdays_field_name
         })
 
+        def turn_str_time_to_time_obj(str_time):
+            hour, minute = str_time.split(":")
+            return time(int(hour), int(minute))
+
         if self.is_add_new:
             kwargs.update({
                 'name': '',
@@ -464,9 +461,8 @@ class AddEditViewMixin(LoginRequiredMixin):
             kwargs.update({
                 'name': self.data_item.get("comment", ""),
                 'start_time': turn_str_time_to_time_obj(
-                    self.data_item.get("start_time")),
-                'end_time': turn_str_time_to_time_obj(
-                    self.data_item.get("end_time")),
+                    self.data_item["start_time"]),
+                'end_time': turn_str_time_to_time_obj(self.data_item["end_time"]),
                 'days': self.data_item["days"],
                 'enabled': self.data_item["enabled"],
             })
