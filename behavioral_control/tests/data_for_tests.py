@@ -81,6 +81,11 @@ DEFAULT_IKUAI_CLIENT_LIST_MAC_GROUPS = {
               'id': 8,
               'comment': ''}]}
 
+DEFAULT_MAC_GROUPS_EDIT_POST_DATA = {
+    'group_name': MAC_GROUP_2,
+    'apply_to':
+        [MAC2, MAC1]}
+
 DEFAULT_IKUAI_CLIENT_LIST_ACL_L7 = {
     'total': 9,
     'data': [{'prio': 28,
@@ -160,7 +165,7 @@ DEFAULT_IKUAI_CLIENT_LIST_ACL_L7 = {
               'dst_addr': '',
               'week': '1234567',
               'time': '00:00-23:59',
-              'id': 10,
+              'id': 1,
               'enabled': 'yes',
               'comment': '禁止电视'},
              {'prio': 2,
@@ -173,6 +178,20 @@ DEFAULT_IKUAI_CLIENT_LIST_ACL_L7 = {
               'id': 11,
               'enabled': 'yes',
               'comment': '允许电视'}]}
+
+DEFAULT_ACL_L7_EDIT_POST_DATA = {
+    'name': '禁止电视',
+    'start_time': "00:00",
+    'length': '',
+    'end_time': "23:59",
+    'week': ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+    'enabled': True,
+    'apply_to': [MAC_GROUP_1],
+    'app_proto': '所有协议',
+    'action': 'accept',
+    'prio': 1
+}
+
 
 DEFAULT_IKUAI_CLIENT_LIST_DOMAIN_BLACKLIST = {
     'total': 2,
@@ -191,6 +210,17 @@ DEFAULT_IKUAI_CLIENT_LIST_DOMAIN_BLACKLIST = {
               'weekdays': '67',
               'ipaddr': MAC_GROUP_1}
              ]}
+
+DEFAULT_DOMAIN_BLACKLIST_EDIT_POST_DATA = {
+    "apply_to": [MAC_GROUP_1],
+    'domain_group': '视频网站',
+    'name': '禁止视频',
+    'start_time': '00:00',
+    'length': '',
+    'end_time': '23:59',
+    'weekdays': ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+    'enabled': False,
+}
 
 DEFAULT_IKUAI_CLIENT_LIST_URL_BLACK = {
     'total': 2,

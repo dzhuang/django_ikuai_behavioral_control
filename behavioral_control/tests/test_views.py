@@ -5,8 +5,11 @@ from django.db.models.signals import post_save
 from django.test import TestCase
 from django.urls import reverse
 from factories import RouterFactory
-from tests.data_for_tests import (DEFAULT_IKUAI_CLIENT_LIST_MAC_GROUPS,
-                                  DEFAULT_IKUAI_CLIENT_LIST_MONITOR_LANIP)
+from tests.data_for_tests import (DEFAULT_ACL_L7_EDIT_POST_DATA,
+                                  DEFAULT_DOMAIN_BLACKLIST_EDIT_POST_DATA,
+                                  DEFAULT_IKUAI_CLIENT_LIST_MAC_GROUPS,
+                                  DEFAULT_IKUAI_CLIENT_LIST_MONITOR_LANIP,
+                                  DEFAULT_MAC_GROUPS_EDIT_POST_DATA)
 from tests.mixins import (DataManagerDefaultRetMixin, MockRouterClientMixin,
                           RequestTestMixin)
 
@@ -191,6 +194,11 @@ class ViewTestMixin(MockRouterDataManagerViewMixin):
                 mac_groups.append(d["group_name"])
         self.init_mac_groups = mac_groups
 
+    def get_post_data(self, **kwargs):
+        post_data = deepcopy(self.default_post_data)
+        post_data.update(kwargs)
+        return post_data
+
 
 class DeviceUpdateViewTest(ViewTestMixin, RequestTestMixin, TestCase):
     def get_update_device_url(self, pk=None):
@@ -279,6 +287,8 @@ class DeviceUpdateViewTest(ViewTestMixin, RequestTestMixin, TestCase):
 class DomainBlacklistEditView(
         ViewTestMixin, RequestTestMixin, TestCase):
 
+    default_post_data = DEFAULT_DOMAIN_BLACKLIST_EDIT_POST_DATA
+
     def get_update_domain_blacklist_url(self, domain_blacklist_id=None):
         domain_blacklist_id = domain_blacklist_id or 1
         return reverse("domain_blacklist-edit",
@@ -298,9 +308,23 @@ class DomainBlacklistEditView(
         self.assertEqual(resp.status_code, 302)
         self.assertTrue(resp.url.startswith(reverse("login")))
 
+    def test_post_update_ok(self):
+        resp = self.client.post(
+            self.get_update_domain_blacklist_url(), data=self.get_post_data())
+
+        self.assertEqual(resp.status_code, 302)
+
+    def test_post_add_new_update_ok(self):
+        resp = self.client.post(
+            self.get_update_domain_blacklist_url(-1), data=self.get_post_data())
+
+        self.assertEqual(resp.status_code, 302)
+
 
 class AclL7EditView(
         ViewTestMixin, RequestTestMixin, TestCase):
+
+    default_post_data = DEFAULT_ACL_L7_EDIT_POST_DATA
 
     def get_update_acl_l7_url(self, acl_l7_id=None):
         acl_l7_id = acl_l7_id or 2
@@ -321,9 +345,23 @@ class AclL7EditView(
         self.assertEqual(resp.status_code, 302)
         self.assertTrue(resp.url.startswith(reverse("login")))
 
+    def test_post_update_ok(self):
+        resp = self.client.post(
+            self.get_update_acl_l7_url(), data=self.get_post_data())
+
+        self.assertEqual(resp.status_code, 302)
+
+    def test_post_add_new_update_ok(self):
+        resp = self.client.post(
+            self.get_update_acl_l7_url(-1), data=self.get_post_data())
+
+        self.assertEqual(resp.status_code, 302)
+
 
 class MacGroupEditView(
         ViewTestMixin, RequestTestMixin, TestCase):
+
+    default_post_data = DEFAULT_MAC_GROUPS_EDIT_POST_DATA
 
     def get_update_mac_group_url(self, mac_group=None):
         mac_group = mac_group or 1
@@ -344,6 +382,21 @@ class MacGroupEditView(
         self.assertEqual(resp.status_code, 302)
         self.assertTrue(resp.url.startswith(reverse("login")))
 
+    def test_post_update_ok(self):
+        resp = self.client.post(
+            self.get_update_mac_group_url(), data=self.get_post_data())
+
+        self.assertEqual(resp.status_code, 200)
+
+    def test_post_add_new_update_ok(self):
+        post_data = self.get_post_data()
+        post_data["group_name"] = "foo"
+
+        resp = self.client.post(
+            self.get_update_mac_group_url(-1), data=self.get_post_data())
+
+        self.assertEqual(resp.status_code, 302)
+
 
 class ListViewTest(ViewTestMixin, RequestTestMixin, TestCase):
     def get_list_view_url(self, view_name):
@@ -355,8 +408,9 @@ class ListViewTest(ViewTestMixin, RequestTestMixin, TestCase):
     def test_list(self):
         for name in ["device-list", "mac_group-list", "acl_l7-list",
                      "domain_blacklist-list"]:
-            resp = self.get_list_view(name)
-            self.assertEqual(resp.status_code, 200)
+            with self.subTest(name=name):
+                resp = self.get_list_view(name)
+                self.assertEqual(resp.status_code, 200)
 
     def test_list_not_authenticated(self):
         self.client.logout()
@@ -377,3 +431,41 @@ class ListViewTest(ViewTestMixin, RequestTestMixin, TestCase):
         resp = self.get_list_view("acl_l7-list")
         self.assertEqual(resp.status_code, 200)
         self.assertIn("router_mac_control_url", resp.context)
+
+
+class DeleteViewTest(ViewTestMixin, RequestTestMixin, TestCase):
+    def get_delete_view_url(self, view_name, _id, router_id=None):
+        router_id = router_id or self.router.id
+        return reverse(view_name, args=(router_id, _id))
+
+    def post_list_view(self, view_name, _id, router_id=None):
+        return self.client.post(
+            self.get_delete_view_url(view_name, _id, router_id), data={})
+
+    def test_delete(self):
+        for name in ["domain_blacklist-delete", "acl_l7-delete", "mac_group-delete"]:
+            with self.subTest(name=name):
+                resp = self.post_list_view(name, 1)
+                self.assertEqual(resp.status_code, 200)
+                self.assertIn("success", resp.json())
+
+    def test_get_not_allowed(self):
+        for name in ["domain_blacklist-delete", "acl_l7-delete", "mac_group-delete"]:
+            with self.subTest(name=name):
+                resp = self.client.get(self.get_delete_view_url(name, 1))
+                self.assertEqual(resp.status_code, 403)
+
+    def test_not_authenticated(self):
+        self.client.logout()
+        for name in ["domain_blacklist-delete", "acl_l7-delete", "mac_group-delete"]:
+            with self.subTest(name=name):
+                resp = self.post_list_view(name, 1)
+                self.assertEqual(resp.status_code, 302)
+                self.assertTrue(resp.url.startswith(reverse("login")))
+
+    def test_router_not_exists(self):
+        for name in ["domain_blacklist-delete", "acl_l7-delete", "mac_group-delete"]:
+            with self.subTest(name=name):
+                router_id = 10
+                resp = self.post_list_view(name, 1, router_id)
+                self.assertEqual(resp.status_code, 404)
