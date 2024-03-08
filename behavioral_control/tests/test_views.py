@@ -118,9 +118,14 @@ class FetchCachedInfoTest(
 
         self.addCleanup(mock_rd_manager.stop)
 
-    def get_fetch_info_url(self, info_name, router_id=None):
+    def get_fetch_info_url(self, info_name, router_id=None, query_string=None):
         router_id = router_id or self.router.id
-        return reverse("fetch-cached-info", args=(router_id, info_name))
+        url = reverse("fetch-cached-info", args=(router_id, info_name))
+        query_string = query_string or ""
+        query_string = query_string.lstrip("?")
+        if not query_string:
+            return url
+        return f"{url}?{query_string}"
 
     def test_get_request_with_mocked_manager(self):
         # 配置mock对象
@@ -151,6 +156,18 @@ class FetchCachedInfoTest(
     def test_post_not_allowed(self):
         resp = self.client.post(self.get_fetch_info_url("device"), data={})
         self.assertEqual(resp.status_code, 403)
+
+    def test_get_with_params(self):
+        self.mock_rd_manager.init_data_from_cache.return_value = None
+        self.mock_rd_manager.get_view_data.return_value = (
+            {"mocked_data": "some_value"})
+
+        response = self.client.get(
+            self.get_fetch_info_url("device", query_string="foo=bar&a=b"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertJSONEqual(str(response.content, encoding='utf8'),
+                             {"mocked_data": "some_value"})
 
 
 class DeviceUpdateViewTest(ViewTestMixin, RequestTestMixin, TestCase):

@@ -204,10 +204,6 @@ class MockRouterClientMixin:
 
         self.addCleanup(get_ikuai_client_patch.stop)
 
-    def fetch_cached_info_url(self, info_name="device", router_id=None):
-        router_id = router_id or self.router.id
-        return reverse("fetch-cached-info", args=(router_id, info_name,))
-
     @staticmethod
     def get_local_time(time_str):
         current_tz = timezone.get_current_timezone()
