@@ -29,6 +29,10 @@ class RouterModelTest(CacheMixin, MockRouterClientMixin, TestCase):
         self.assertIsInstance(interval_schedule, IntervalSchedule)
         self.assertEqual(interval_schedule.every, self.router.fetch_interval)
 
+    def test_no_task_receiver(self):
+        self.router.task = None
+        self.router.save()
+
     def test_custom_delete(self):
         schedule, _ = IntervalSchedule.objects.get_or_create(
             every=self.router.fetch_interval, period="seconds")

@@ -7,45 +7,15 @@ from django.urls import reverse
 from factories import RouterFactory
 from tests.data_for_tests import (DEFAULT_ACL_L7_EDIT_POST_DATA,
                                   DEFAULT_DOMAIN_BLACKLIST_EDIT_POST_DATA,
-                                  DEFAULT_IKUAI_CLIENT_LIST_MAC_GROUPS,
                                   DEFAULT_IKUAI_CLIENT_LIST_MONITOR_LANIP,
                                   DEFAULT_MAC_GROUPS_EDIT_POST_DATA)
-from tests.mixins import (DataManagerDefaultRetMixin, MockRouterClientMixin,
-                          RequestTestMixin)
+from tests.mixins import (MockRouterClientMixin,
+                          MockRouterDataManagerViewMixin, RequestTestMixin,
+                          ViewTestMixin)
 
 from my_router.models import Device, Router
 from my_router.receivers import create_or_update_router_fetch_task
 from my_router.views import fetch_new_info_save_and_set_cache
-
-
-class MockRouterDataManagerViewMixin(
-        MockRouterClientMixin, DataManagerDefaultRetMixin):
-    def setUp(self):
-        super().setUp()
-
-        # post_save.disconnect(create_or_update_router_fetch_task, sender=Router)
-
-        self.mock_get_client_patcher = patch('my_router.views.Router.get_client')
-        self.mock_get_client = self.mock_get_client_patcher.start()
-        self.mock_get_client.return_value = MagicMock()
-        self.mock_client = self.mock_get_client.return_value
-        self.router.get_client = MagicMock(return_value=self.mock_client)
-        self.addCleanup(self.mock_get_client_patcher.stop)
-
-        self.mock_client.list_monitor_lanip.return_value = (
-            self.default_ikuai_client_list_monitor_lanip)
-
-        self.mock_client.list_mac_groups.return_value = (
-            self.default_ikuai_client_list_mac_groups)
-
-        self.mock_client.list_acl_l7.return_value = (
-            self.default_ikuai_client_list_acl_l7)
-
-        self.mock_client.list_domain_blacklist.return_value = (
-            self.default_ikuai_client_list_domain_blacklist)
-
-        self.mock_client.list_url_black.return_value = (
-            self.default_ikuai_client_list_url_black)
 
 
 class HomeViewTest(MockRouterClientMixin, RequestTestMixin, TestCase):
@@ -138,6 +108,7 @@ class FetchNewInfoSaveAndSetCacheTest(MockRouterDataManagerViewMixin, TestCase):
 
 class FetchCachedInfoTest(
         MockRouterDataManagerViewMixin, RequestTestMixin, TestCase):
+
     def setUp(self):
         super().setUp()
         mock_rd_manager = patch('my_router.views.RouterDataManager')
@@ -180,24 +151,6 @@ class FetchCachedInfoTest(
     def test_post_not_allowed(self):
         resp = self.client.post(self.get_fetch_info_url("device"), data={})
         self.assertEqual(resp.status_code, 403)
-
-
-class ViewTestMixin(MockRouterDataManagerViewMixin):
-    def setUp(self):
-        super().setUp()
-        fetch_new_info_save_and_set_cache(router=self.router)
-        self.first_device = Device.objects.first()
-
-        mac_groups = []
-        for d in DEFAULT_IKUAI_CLIENT_LIST_MAC_GROUPS["data"]:
-            if self.first_device.mac in d["addr_pool"].split(","):
-                mac_groups.append(d["group_name"])
-        self.init_mac_groups = mac_groups
-
-    def get_post_data(self, **kwargs):
-        post_data = deepcopy(self.default_post_data)
-        post_data.update(kwargs)
-        return post_data
 
 
 class DeviceUpdateViewTest(ViewTestMixin, RequestTestMixin, TestCase):
