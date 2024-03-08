@@ -125,7 +125,7 @@
                 return data.map(function (item) {
                   // 根据enabled字段的值选择按钮类
                   let btnClass;
-                  if (item.enabled !== 'enabled'){
+                  if (item.enabled !== true){
                     btnClass = 'btn-default';}
                   else {
                     btnClass = item.action === 'drop' ? 'btn-danger' : 'btn-success';

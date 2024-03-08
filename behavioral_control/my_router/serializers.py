@@ -474,7 +474,7 @@ class DeviceWithRuleParseSerializer(DeviceParseSerializer):
                         "name": item["comment"] or "unknown",
                         "app_proto": item["app_proto"],
                         "edit-url": edit_url,
-                        "enabled": enabled,
+                        "enabled": enabled == "enabled",
                         "action": item["action"],
                         "weekdays": item["week"],
                         "time": item["time"],
