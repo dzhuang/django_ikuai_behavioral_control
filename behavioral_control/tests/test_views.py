@@ -352,11 +352,15 @@ class MacGroupEditView(
 
 
 class ListViewTest(ViewTestMixin, RequestTestMixin, TestCase):
-    def get_list_view_url(self, view_name):
-        return reverse(view_name, args=(self.router.id,))
+    def get_list_view_url(self, view_name, query_string=None):
+        url = reverse(view_name, args=(self.router.id,))
+        if query_string:
+            url = f"{url}?{query_string.lstrip('?')}"
+        return url
 
-    def get_list_view(self, view_name):
-        return self.client.get(self.get_list_view_url(view_name))
+    def get_list_view(self, view_name, query_string=None):
+        url = self.get_list_view_url(view_name, query_string=query_string)
+        return self.client.get(url)
 
     def test_list(self):
         for name in ["device-list", "mac_group-list", "acl_l7-list",
@@ -384,6 +388,11 @@ class ListViewTest(ViewTestMixin, RequestTestMixin, TestCase):
         resp = self.get_list_view("acl_l7-list")
         self.assertEqual(resp.status_code, 200)
         self.assertIn("router_mac_control_url", resp.context)
+
+    def test_list_acl_l7_with_filter_mac_groups(self):
+        resp = self.get_list_view("acl_l7-list", query_string="mac_group=IPAD")
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotIn("router_mac_control_url", resp.context)
 
 
 class DeleteViewTest(ViewTestMixin, RequestTestMixin, TestCase):
