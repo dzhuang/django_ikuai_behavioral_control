@@ -1,6 +1,7 @@
+from copy import deepcopy
 from datetime import datetime
 from unittest import mock
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from django.db.models.signals import post_save
 from django.test import Client, override_settings
@@ -14,8 +15,9 @@ from tests.data_for_tests import (DEFAULT_IKUAI_CLIENT_LIST_ACL_L7,
 from tests.factories import RouterFactory, UserFactory
 
 from my_router.data_manager import RouterDataManager
-from my_router.models import Router
+from my_router.models import Device, Router
 from my_router.receivers import create_or_update_router_fetch_task
+from my_router.views import fetch_new_info_save_and_set_cache
 
 
 class CacheMixin:
@@ -287,3 +289,49 @@ class DataManagerTestMixin(
         # 重新连接信号
         super().tearDown()
         post_save.connect(create_or_update_router_fetch_task, sender=Router)
+
+
+class MockRouterDataManagerViewMixin(
+        MockRouterClientMixin, DataManagerDefaultRetMixin):
+    def setUp(self):
+        super().setUp()
+
+        self.mock_get_client_patcher = patch('my_router.views.Router.get_client')
+        self.mock_get_client = self.mock_get_client_patcher.start()
+        self.mock_get_client.return_value = MagicMock()
+        self.mock_client = self.mock_get_client.return_value
+        self.router.get_client = MagicMock(return_value=self.mock_client)
+        self.addCleanup(self.mock_get_client_patcher.stop)
+
+        self.mock_client.list_monitor_lanip.return_value = (
+            self.default_ikuai_client_list_monitor_lanip)
+
+        self.mock_client.list_mac_groups.return_value = (
+            self.default_ikuai_client_list_mac_groups)
+
+        self.mock_client.list_acl_l7.return_value = (
+            self.default_ikuai_client_list_acl_l7)
+
+        self.mock_client.list_domain_blacklist.return_value = (
+            self.default_ikuai_client_list_domain_blacklist)
+
+        self.mock_client.list_url_black.return_value = (
+            self.default_ikuai_client_list_url_black)
+
+
+class ViewTestMixin(MockRouterDataManagerViewMixin):
+    def setUp(self):
+        super().setUp()
+        fetch_new_info_save_and_set_cache(router=self.router)
+        self.first_device = Device.objects.first()
+
+        mac_groups = []
+        for d in DEFAULT_IKUAI_CLIENT_LIST_MAC_GROUPS["data"]:
+            if self.first_device.mac in d["addr_pool"].split(","):
+                mac_groups.append(d["group_name"])
+        self.init_mac_groups = mac_groups
+
+    def get_post_data(self, **kwargs):
+        post_data = deepcopy(self.default_post_data)
+        post_data.update(kwargs)
+        return post_data

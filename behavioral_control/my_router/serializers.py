@@ -2,12 +2,10 @@ from __future__ import annotations
 
 from collections import defaultdict
 from copy import deepcopy
-from datetime import datetime
 from urllib.parse import quote
 
 from django.urls import reverse
 from django.utils.timezone import now
-from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from my_router.models import Device
@@ -33,51 +31,6 @@ class UnknownAsEmptyField(serializers.CharField):
         if value == 'Unknown':
             return ""
         return value
-
-
-class BoolToZeroOneField(serializers.Field):
-    def to_internal_value(self, data):
-        if isinstance(data, bool):
-            return data
-
-        msg = _("must be 0 or 1, while got {data}.").format(data=str(data))
-
-        try:
-            data = int(data)
-        except ValueError:
-            raise serializers.ValidationError(msg)
-        else:
-            if data not in [0, 1]:
-                raise serializers.ValidationError(msg)
-
-        return bool(data)
-
-    def to_representation(self, value):
-        return "1" if value else "0"
-
-
-class BoolToYesNoField(serializers.Field):
-    def to_internal_value(self, data):
-        if isinstance(data, bool):
-            return data
-
-        msg = _("must be 'no' or 'yes', while got {data}.").format(data=str(data))
-
-        if data not in ['no', 'yes']:
-            raise serializers.ValidationError(msg)
-
-        return True if data == "yes" else False
-
-    def to_representation(self, value):
-        return "yes" if value else "no"
-
-
-class TimestampField(serializers.Field):
-    def to_representation(self, value):
-        return int(value.timestamp())
-
-    def to_internal_value(self, data):
-        return datetime.fromtimestamp(int(data))
 
 
 class MacAddressField(serializers.Field):
