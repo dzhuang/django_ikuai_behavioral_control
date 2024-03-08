@@ -26,10 +26,13 @@
     {% endif %}
   </div>
   <div>
-  {% for mac_group_name in mac_group_names %}
-    <button class="btn btn-default" onclick="filterTable('{{  mac_group_name }}')">{{ mac_group_name }}</button>
-  {% endfor %}
-    <button class="btn btn-success" onclick="filterTable('')">Reset Filter</button>
+  {% if not filter_mac_group %}
+    {% for mac_group_name in mac_group_names %}
+      <a class="btn btn-default" href="{% url "acl_l7-list" router_id %}?mac_group={{ mac_group_name }}">{{ mac_group_name }}</a>
+    {% endfor %}
+  {% else %}
+    <a class="btn btn-success" href="{% url "acl_l7-list" router_id %}">All Results</a>
+  {% endif %}
   </div>
 
   <table class="table table-striped protocol_control-all">
@@ -61,7 +64,7 @@
   <script type="text/javascript">
     var tbl = $("table.protocol_control-all").DataTable({
       "ajax": {
-        "url": '{% url "fetch-cached-info" router_id "acl_l7" %}',
+        "url": '{% url "fetch-cached-info" router_id "acl_l7" %}{% if filter_mac_group %}?mac_group={{ filter_mac_group }}{% endif %}',
         "dataSrc": ""
       },
       "columns": [
@@ -73,7 +76,7 @@
           "data": "edit-url",
           "render": function (data, type, row, meta) {
             if (type === 'display') {
-              return "<a class='btn btn-default btn-sm' href='" + data + "'> {% trans 'Edit' %} </a>" +
+              return "<a class='btn btn-default btn-sm' href='" + data + "{% if filter_mac_group %}?mac_group={{ filter_mac_group }}{% endif %}'> {% trans 'Edit' %} </a>" +
                 "<button class='btn btn-danger btn-sm remove-item' data-url='" + row["delete-url"] + "' onclick='removeItem(event);'> {% trans 'Delete' %} </button>"
             }
             return data;
@@ -150,11 +153,6 @@
       "language": {url: '{% static "datatables-i18n/i18n/" %}{{LANG}}.json'},
       "order": [[5, 'desc'], [6, 'asc']]
     });
-
-    function filterTable(value) {
-      let table = $('table.protocol_control-all').DataTable();
-      table.columns(7).search(value).draw();
-    }
 
   </script>
   {{ block.super }}

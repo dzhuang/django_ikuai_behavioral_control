@@ -73,11 +73,15 @@ def fetch_new_info_save_and_set_cache(router_id: int | None = None,
 def fetch_cached_info(request, router_id, info_name):
     if request.method == "GET":
         router = get_object_or_404(Router, id=router_id)
+        query_params = {}
+        for key, value in request.GET.items():
+            query_params[key] = value
 
         try:
             rd_manager = RouterDataManager(router_instance=router)
             rd_manager.init_data_from_cache()
-            info = rd_manager.get_view_data(info_name=info_name)
+            info = rd_manager.get_view_data(
+                info_name=info_name, query_params=query_params)
             return JsonResponse(data=info, safe=False)
         except Exception as e:
             import traceback
@@ -639,7 +643,7 @@ class ACLL7EditView(AddEditViewMixin, FormView):
     form_weekdays_field_name = "week"
     template_name = 'my_router/protocol_control-page.html'
     id_name = "acl_l7_id"
-    success_url_name = "acl_l7-edit"
+    success_url_name = "acl_l7-list"
     form_description_for_edit = _("Edit Protocol Control")
     form_description_for_add = _("Add Protocol Control")
 
@@ -705,16 +709,42 @@ class ACLL7EditView(AddEditViewMixin, FormView):
             return self.form_invalid(form)
 
     def get_extra_context_data(self):
-        return {
+        extra_context = {
             "router_protocol_control_url":
                 self.rd_manager.router_protocol_control_url}
+
+        filter_mac_group = self.request.GET.get("mac_group")
+
+        if filter_mac_group:
+            extra_context["filter_mac_group"] = filter_mac_group
+        return extra_context
+
+    def get_success_url(self):
+        url = reverse_lazy(
+            self.success_url_name,
+            kwargs={'router_id': self.kwargs['router_id']})
+
+        filter_mac_group = self.request.GET.get("mac_group")
+
+        if filter_mac_group:
+            url = f"{url}?mac_group={filter_mac_group}"
+
+        return url
 
 
 @login_required
 def list_acl_l7(request, router_id):
     router = get_object_or_404(Router, id=router_id)
+
+    query_params = {}
+    for key, value in request.GET.items():
+        query_params[key] = value
+
     rd_manager = RouterDataManager(router_instance=router)
-    acl_l7_list = rd_manager.get_acl_l7_list_for_view()
+    acl_l7_list = rd_manager.get_acl_l7_list_for_view(query_params=query_params)
+
+    filter_mac_group = query_params.get("mac_group", None)
+
     mac_group_names = set(
         item for sublist in acl_l7_list for item in sublist['apply_to'])
 
@@ -722,7 +752,8 @@ def list_acl_l7(request, router_id):
         "router_id": router_id,
         "form_description": _("List of Protocol control"),
         "router_protocol_control_url": rd_manager.router_protocol_control_url,
-        "mac_group_names": mac_group_names
+        "mac_group_names": mac_group_names,
+        "filter_mac_group": filter_mac_group
     }
 
     need_display_router_mac_control_url = False

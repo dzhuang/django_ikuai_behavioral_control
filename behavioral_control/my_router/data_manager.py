@@ -619,7 +619,7 @@ class RouterDataManager:
 
         return new_dict
 
-    def get_device_view_data(self):
+    def get_device_view_data(self, query_params=None):
         device_rule_data = self.get_device_rule_data()
 
         device_rule_data = dict(
@@ -644,7 +644,7 @@ class RouterDataManager:
             ret[dblist_id] = serializer.get_datatable_data(self.router_id)
         return ret
 
-    def get_domain_blacklist_list_for_view(self):
+    def get_domain_blacklist_list_for_view(self, query_params=None):
         domain_blacklist_data = self.get_domain_blacklist_data()
         return list(domain_blacklist_data.values())
 
@@ -664,7 +664,7 @@ class RouterDataManager:
     def router_mac_group_url(self):
         return urljoin(self.router_instance.url, "/#/behavior/mac-group")
 
-    def get_url_black_view_data(self):
+    def get_url_black_view_data(self, query_params=None):
         url_black = deepcopy(self.url_black_list)
         enabled = []
         disabled = []
@@ -679,21 +679,29 @@ class RouterDataManager:
 
         return {"enabled": enabled, "disabled": disabled}
 
-    def get_acl_l7_list_data(self):
+    def get_acl_l7_list_data(self, query_params=None):
+        query_params = query_params or {}
         acl_l7 = deepcopy(self.acl_l7_list)
+
+        filter_mac_group = query_params.get("mac_group", None)
 
         ret = {}
         for acl_l7_item in acl_l7:
+            # print(acl_l7_item)
             acl_l7_id = int(acl_l7_item["id"])
             serializer = AclL7RuleSerializer(data=acl_l7_item)
             serializer.is_valid(raise_exception=True)
+            serialized_data = serializer.get_datatable_data(self.router_id)
+            if filter_mac_group is not None:
+                if filter_mac_group not in serialized_data["apply_to"]:
+                    continue
 
-            ret[acl_l7_id] = serializer.get_datatable_data(self.router_id)
+            ret[acl_l7_id] = serialized_data
 
         return ret
 
-    def get_acl_l7_list_for_view(self):
-        acl_l7_list_data = self.get_acl_l7_list_data()
+    def get_acl_l7_list_for_view(self, query_params=None):
+        acl_l7_list_data = self.get_acl_l7_list_data(query_params=query_params)
 
         return list(acl_l7_list_data.values())
 
@@ -710,7 +718,7 @@ class RouterDataManager:
 
         return ret
 
-    def get_mac_group_list_for_view(self):
+    def get_mac_group_list_for_view(self, query_params=None):
         mac_groups_data = self.get_mac_groups_data()
         mac_groups_list = list(mac_groups_data.values())
         for mac_group in mac_groups_list:
@@ -727,25 +735,27 @@ class RouterDataManager:
 
         return mac_groups_list
 
-    def get_view_data(self, info_name):
+    def get_view_data(self, info_name, query_params=None):
+        query_params = query_params or {}
         assert info_name in [
             "device", "domain_blacklist", "url_black", "acl_l7", "mac_group"]
 
         if info_name == "device":
-            return self.get_device_view_data()
+            return self.get_device_view_data(query_params=query_params)
 
         elif info_name == "domain_blacklist":
-            return self.get_domain_blacklist_list_for_view()
+            return self.get_domain_blacklist_list_for_view(
+                query_params=query_params)
 
         # todo: not implemented yet
         elif info_name == "url_black":
-            return self.get_url_black_view_data()
+            return self.get_url_black_view_data(query_params=query_params)
 
         elif info_name == "acl_l7":
-            return self.get_acl_l7_list_for_view()
+            return self.get_acl_l7_list_for_view(query_params=query_params)
 
         elif info_name == "mac_group":
-            return self.get_mac_group_list_for_view()
+            return self.get_mac_group_list_for_view(query_params=query_params)
 
         raise NotImplementedError()
 
