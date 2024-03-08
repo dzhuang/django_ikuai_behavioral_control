@@ -14,7 +14,6 @@
 
 {% block content %}
   <h1>{% trans "List of devices" %}
-    {#        <a class="btn btn-danger" style="margin-left: 5em;" type="button" id="reboot-device" href="{% url 'router-reboot' router_id %}"> {% trans "Reboot" %}</a>#}
   </h1>
   <hr>
   <div>
@@ -74,7 +73,17 @@
           }
 
         },
-        {"data": "last_seen"},
+        {"data": "last_seen",
+          "render": function (data, type, row) {
+            if (type === 'display') {
+              if(data) {
+                const datetime = new Date(data);
+                return datetime.toLocaleString()
+              }
+            }
+            return data
+          }
+        },
         {
           "data": "reject",
           "render": function (data, type, row) {
@@ -116,7 +125,7 @@
                 return data.map(function (item) {
                   // 根据enabled字段的值选择按钮类
                   let btnClass;
-                  if (item.enabled !== 'enabled'){
+                  if (item.enabled !== true){
                     btnClass = 'btn-default';}
                   else {
                     btnClass = item.action === 'drop' ? 'btn-danger' : 'btn-success';

@@ -73,11 +73,15 @@ def fetch_new_info_save_and_set_cache(router_id: int | None = None,
 def fetch_cached_info(request, router_id, info_name):
     if request.method == "GET":
         router = get_object_or_404(Router, id=router_id)
+        query_params = {}
+        for key, value in request.GET.items():
+            query_params[key] = value
 
         try:
             rd_manager = RouterDataManager(router_instance=router)
             rd_manager.init_data_from_cache()
-            info = rd_manager.get_view_data(info_name=info_name)
+            info = rd_manager.get_view_data(
+                info_name=info_name, query_params=query_params)
             return JsonResponse(data=info, safe=False)
         except Exception as e:
             import traceback
@@ -489,7 +493,6 @@ class AddEditViewMixin(LoginRequiredMixin):
         raise NotImplementedError()
 
     def form_invalid(self, form):
-        # print(form.errors)
         return super().form_invalid(form)
 
     def form_valid(self, form):
@@ -639,12 +642,20 @@ class ACLL7EditView(AddEditViewMixin, FormView):
     form_weekdays_field_name = "week"
     template_name = 'my_router/protocol_control-page.html'
     id_name = "acl_l7_id"
-    success_url_name = "acl_l7-edit"
+    success_url_name = "acl_l7-list"
     form_description_for_edit = _("Edit Protocol Control")
     form_description_for_add = _("Add Protocol Control")
 
     def get_all_data_with_id_as_key(self):
         return self.rd_manager.get_acl_l7_list_data()
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        if self.is_add_new:
+            kwargs['apply_to_initial'] = (
+                self.request.GET.get("mac_group", "").split(","))
+
+        return kwargs
 
     def get_extra_form_kwargs(self):
         extra_kwargs = {}
@@ -704,17 +715,52 @@ class ACLL7EditView(AddEditViewMixin, FormView):
 
             return self.form_invalid(form)
 
+    def get_filter_mac_groups(self):
+        filter_mac_groups = self.request.GET.get("mac_group")
+        if not filter_mac_groups:
+            return []
+        else:
+            return filter_mac_groups.split(",")
+
+    def get_filter_mac_groups_qstring_value(self):
+        filter_mac_groups = self.get_filter_mac_groups()
+        return "%2C".join(filter_mac_groups)
+
     def get_extra_context_data(self):
-        return {
+        extra_context = {
             "router_protocol_control_url":
                 self.rd_manager.router_protocol_control_url}
+
+        filter_mac_groups_query_string = self.get_filter_mac_groups_qstring_value()
+
+        if filter_mac_groups_query_string:
+            extra_context["filter_mac_groups"] = filter_mac_groups_query_string
+        return extra_context
+
+    def get_success_url(self):
+        url = reverse_lazy(
+            self.success_url_name,
+            kwargs={'router_id': self.kwargs['router_id']})
+
+        filter_mac_groups_query_string = self.get_filter_mac_groups_qstring_value()
+
+        if filter_mac_groups_query_string:
+            url = f"{url}?mac_group={filter_mac_groups_query_string}"
+
+        return url
 
 
 @login_required
 def list_acl_l7(request, router_id):
     router = get_object_or_404(Router, id=router_id)
+
+    query_params = {}
+    for key, value in request.GET.items():
+        query_params[key] = value
+
     rd_manager = RouterDataManager(router_instance=router)
-    acl_l7_list = rd_manager.get_acl_l7_list_for_view()
+    acl_l7_list = rd_manager.get_acl_l7_list_for_view(query_params=query_params)
+
     mac_group_names = set(
         item for sublist in acl_l7_list for item in sublist['apply_to'])
 
@@ -722,8 +768,14 @@ def list_acl_l7(request, router_id):
         "router_id": router_id,
         "form_description": _("List of Protocol control"),
         "router_protocol_control_url": rd_manager.router_protocol_control_url,
-        "mac_group_names": mac_group_names
+        "mac_group_names": mac_group_names,
     }
+
+    filter_mac_groups = query_params.get("mac_group", None)
+    if filter_mac_groups:
+        mac_groups = filter_mac_groups.split(",")
+        context["filter_mac_groups"] = "%2C".join(mac_groups)
+        context["mac_group_names"] = mac_groups
 
     need_display_router_mac_control_url = False
 
