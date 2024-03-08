@@ -390,7 +390,8 @@ class DeviceWithRuleParseSerializer(DeviceParseSerializer):
     url_black = URLBlackSubRuleSerializer(required=False, default={})
     acl_l7 = AclL7SubRuleSerializer(required=False, default={})
 
-    def get_datatable_data(self):
+    def get_datatable_data(self, mac_groups_available=None):
+        mac_groups_available = mac_groups_available or []
         new_data = deepcopy(self.validated_data)
 
         ret = {}
@@ -454,16 +455,26 @@ class DeviceWithRuleParseSerializer(DeviceParseSerializer):
             acl_l7_data = new_data.pop("acl_l7")
             for enabled in ["enabled", "disabled"]:
                 items = acl_l7_data.get(enabled, [])
+
                 for item in items:
-                    ret["acl_l7"].append({
-                        "name": item["comment"] or "unknown",
-                        "app_proto": item["app_proto"],
-                        "edit-url": reverse(
+                    apply_to_mac_groups = [
+                        mg for mg in item["src_addr"].split(",")
+                        if mg in mac_groups_available]
+
+                    edit_url = reverse(
                             "acl_l7-edit",
                             kwargs={
                                 "router_id": device_instance.router.id,
-                                "acl_l7_id": item["id"]}),
-                        "enabled": enabled == "enabled",
+                                "acl_l7_id": item["id"]})
+
+                    edit_url = (
+                        f"{edit_url}?mac_group={'%2C'.join(apply_to_mac_groups)}")
+
+                    ret["acl_l7"].append({
+                        "name": item["comment"] or "unknown",
+                        "app_proto": item["app_proto"],
+                        "edit-url": edit_url,
+                        "enabled": enabled,
                         "action": item["action"],
                         "weekdays": item["week"],
                         "time": item["time"],
@@ -473,5 +484,4 @@ class DeviceWithRuleParseSerializer(DeviceParseSerializer):
         for k, v in new_data.items():
             # print(k)
             ret[k] = v
-
         return ret

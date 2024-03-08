@@ -17,7 +17,7 @@
 
   <div style="margin-bottom: 15px;">
     <a class="btn btn-default"
-     href="{% url "acl_l7-edit" router_id -1 %}">{% trans "Add Protocol control" %}</a>
+     href="{% url "acl_l7-edit" router_id -1 %}{% if filter_mac_groups %}?mac_group={{ filter_mac_groups }}{% endif %}">{% trans "Add Protocol control" %}</a>
     <a class="btn btn-default"
      href="{{ router_protocol_control_url }}" target="_blank">{% trans "Edit Protocol control selection on router" %}</a>
     {% if router_mac_control_url %}
@@ -26,13 +26,10 @@
     {% endif %}
   </div>
   <div>
-  {% if not filter_mac_group %}
     {% for mac_group_name in mac_group_names %}
       <a class="btn btn-default" href="{% url "acl_l7-list" router_id %}?mac_group={{ mac_group_name }}">{{ mac_group_name }}</a>
     {% endfor %}
-  {% else %}
-    <a class="btn btn-success" href="{% url "acl_l7-list" router_id %}">All Results</a>
-  {% endif %}
+    <a class="btn btn-success" href="{% url "acl_l7-list" router_id %}">{% trans "All MAC groups" %}</a>
   </div>
 
   <table class="table table-striped protocol_control-all">
@@ -64,7 +61,7 @@
   <script type="text/javascript">
     var tbl = $("table.protocol_control-all").DataTable({
       "ajax": {
-        "url": '{% url "fetch-cached-info" router_id "acl_l7" %}{% if filter_mac_group %}?mac_group={{ filter_mac_group }}{% endif %}',
+        "url": '{% url "fetch-cached-info" router_id "acl_l7" %}{% if filter_mac_groups %}?mac_group={{ filter_mac_groups }}{% endif %}',
         "dataSrc": ""
       },
       "columns": [
@@ -76,7 +73,7 @@
           "data": "edit-url",
           "render": function (data, type, row, meta) {
             if (type === 'display') {
-              return "<a class='btn btn-default btn-sm' href='" + data + "{% if filter_mac_group %}?mac_group={{ filter_mac_group }}{% endif %}'> {% trans 'Edit' %} </a>" +
+              return "<a class='btn btn-default btn-sm' href='" + data + "{% if filter_mac_groups %}?mac_group={{ filter_mac_groups }}{% endif %}'> {% trans 'Edit' %} </a>" +
                 "<button class='btn btn-danger btn-sm remove-item' data-url='" + row["delete-url"] + "' onclick='removeItem(event);'> {% trans 'Delete' %} </button>"
             }
             return data;

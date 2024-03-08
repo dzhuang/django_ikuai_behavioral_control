@@ -615,7 +615,8 @@ class RouterDataManager:
             serializer = DeviceWithRuleParseSerializer(data=device_info)
             serializer.is_valid(raise_exception=True)
 
-            new_dict[mac] = serializer.get_datatable_data()
+            new_dict[mac] = serializer.get_datatable_data(
+                mac_groups_available=list(self.mac_groups.keys()))
 
         return new_dict
 
@@ -683,17 +684,22 @@ class RouterDataManager:
         query_params = query_params or {}
         acl_l7 = deepcopy(self.acl_l7_list)
 
-        filter_mac_group = query_params.get("mac_group", None)
+        filter_mac_groups = query_params.get("mac_group", None)
 
         ret = {}
         for acl_l7_item in acl_l7:
-            # print(acl_l7_item)
             acl_l7_id = int(acl_l7_item["id"])
             serializer = AclL7RuleSerializer(data=acl_l7_item)
             serializer.is_valid(raise_exception=True)
             serialized_data = serializer.get_datatable_data(self.router_id)
-            if filter_mac_group is not None:
-                if filter_mac_group not in serialized_data["apply_to"]:
+            if filter_mac_groups is not None:
+                has_result = False
+                for filter_mac_group in filter_mac_groups.split(","):
+                    if filter_mac_group in serialized_data["apply_to"]:
+                        has_result = True
+                        break
+
+                if not has_result:
                     continue
 
             ret[acl_l7_id] = serialized_data

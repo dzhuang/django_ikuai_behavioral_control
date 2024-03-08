@@ -7,7 +7,7 @@
 {% endblock %}
 
 {% block content %}
-  <a class="btn btn-default" href="{% url "acl_l7-list" router_id %}{% if filter_mac_group %}?mac_group={{ filter_mac_group }}{% endif %}">{% trans "List of Protocol control" %}</a>
+  <a class="btn btn-default" href="{% url "acl_l7-list" router_id %}{% if filter_mac_groups %}?mac_group={{ filter_mac_groups }}{% endif %}">{% trans "List of Protocol control" %}</a>
   <a class="btn btn-default" href="{{ router_protocol_control_url }}" target="_blank">{% trans "Edit Protocol control selection on router" %}</a>
 
   {{ block.super }}
