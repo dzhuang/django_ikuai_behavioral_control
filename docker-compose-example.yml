@@ -21,9 +21,9 @@ services:
       - BEHAVIORAL_CONTROL_SERVER_DEBUG=off
       - BEHAVIORAL_CONTROL_SERVER_REDIS_LOCATION=redis://redis_service:6379
       - BEHAVIORAL_CONTROL_ALLOWED_HOST_router=foo.com
-      - BEHAVIORAL_CONTROL_ALLOWED_HOST_local=192.168.1.1
+      - BEHAVIORAL_CONTROL_ALLOWED_HOST_local=192.168.9.1
       - BEHAVIORAL_CONTROL_CSRF_TRUSTED_ORIGINS_router=https://foo.com
-      - BEHAVIORAL_CONTROL_CSRF_TRUSTED_ORIGINS_local=http://192.168.1.1
+      - BEHAVIORAL_CONTROL_CSRF_TRUSTED_ORIGINS_local=http://192.168.9.1
 
       - DJANGO_SUPERUSER_USERNAME=pc_test
       - DJANGO_SUPERUSER_PASSWORD=pc_test
@@ -36,7 +36,7 @@ services:
       - rabbit
     restart: always
     labels:
-      - "com.centurylinklabs.watchtower.scope=router_behavioral_control"
+      - "com.centurylinklabs.watchtower.scope=ikuai_behavioral_control"
 
   postgres_db_service:
     image: postgres:14
@@ -91,19 +91,19 @@ services:
       - rabbit
     restart: always
     labels:
-      - "com.centurylinklabs.watchtower.scope=router_behavioral_control"
+      - "com.centurylinklabs.watchtower.scope=ikuai_behavioral_control"
 
   # Enable image/container auto update
-  watchtower:
-    image: containrrr/watchtower
-    container_name: watchtower_behavioral_control
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      WATCHTOWER_MONITOR_ONLY: 'true'
-    command: --interval 30 behavioral_control, behavioral_control_celery
-    labels:
-      - "com.centurylinklabs.watchtower.scope=ikuai_behavioral_control"
+#  watchtower:
+#    image: containrrr/watchtower
+#    container_name: watchtower_behavioral_control
+#    volumes:
+#      - /var/run/docker.sock:/var/run/docker.sock
+#    environment:
+#      WATCHTOWER_MONITOR_ONLY: 'true'
+#    command: --cleanup --interval 30 behavioral_control, behavioral_control_celery
+#    labels:
+#      - "com.centurylinklabs.watchtower.scope=ikuai_behavioral_control"
 
 volumes:
   redis_data:
