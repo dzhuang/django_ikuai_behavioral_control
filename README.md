@@ -66,7 +66,6 @@ Django iKuai Behavioral Control (Django iKuai行为控制)是一个基于 Django
 | `DJANGO_SUPERUSER_PASSWORD`                  | Django 超级用户的密码。                                                                     |
 | `DJANGO_SUPERUSER_EMAIL`                     | Django 超级用户的电子邮件地址。                                                               |
 | `BEHAVIORAL_CONTROL_SERVER_SECRET_KEY`       | Django 应用的秘密密钥，用于安全性关键的操作，如会话、签名等。应保持秘密。                            |
-| `BEHAVIORAL_CONTROL_SERVER_REDIS_LOCATION`   | Redis 服务的连接位置，格式为 `redis://redis_service:6379`。用于配置与 Redis 实例的连接，不要随意修改。           |
 | `BEHAVIORAL_CONTROL_ALLOWED_HOST_`           | 重要：以此开头的键名表示允许访问应用的主机名或IP地址，对应于Django设置中的 [ALLOWED_HOSTS](https://docs.djangoproject.com/en/5.0/ref/settings/#allowed-hosts) 。键值不需要包含scheme，应包含该网站的主机域名和实例的本地ip。例如：`BEHAVIORAL_CONTROL_ALLOWED_HOST_router=foo.com` 和 `BEHAVIORAL_CONTROL_ALLOWED_HOST_local=192.168.1.1`。 |
 | `BEHAVIORAL_CONTROL_CSRF_TRUSTED_ORIGINS_`   | 重要：以此开头的键名表示可信的来源域名或IP，用于 CSRF 验证，对应于Django设置中的 [CSRF_TRUSTED_ORIGINS](https://docs.djangoproject.com/en/5.0/ref/settings/#std-setting-CSRF_TRUSTED_ORIGINS)。键值中必须包含scheme（如 `http://` 或 `https://`）。应包含该网站的域名访问方式和实例的本地ip访问方式，例如示例中的：`BEHAVIORAL_CONTROL_CSRF_TRUSTED_ORIGINS_router=https://foo.com` 和 `BEHAVIORAL_CONTROL_CSRF_TRUSTED_ORIGINS_local=http://192.168.1.1`。 |
 
@@ -81,6 +80,7 @@ Django iKuai Behavioral Control (Django iKuai行为控制)是一个基于 Django
 | `BEHAVIORAL_CONTROL_SERVER_DB_USER`          | 用于数据库连接的用户名。                                                                     |
 | `BEHAVIORAL_CONTROL_SERVER_DB_PASSWORD`      | 用于数据库连接的密码。                                                                     |
 | `BEHAVIORAL_CONTROL_SERVER_DB`               | 数据库的名称，用于存储应用数据。                                                               |
+| `BEHAVIORAL_CONTROL_SERVER_REDIS_LOCATION`   | Redis 服务的连接位置，格式为 `redis://redis_service:6379`。用于配置与 Redis 实例的连接，不要随意修改。           |
 | `RABBITMQ_HOST`                              | RabbitMQ 服务的主机名，用于消息队列服务。应与`rabbit 服务`中的`hostname`一致.|
 | `RABBITMQ_USER`                              | 连接 RabbitMQ 服务的用户名。应与`rabbit 服务`中的`environment`对应项目一致.|
 | `RABBITMQ_PASSWORD`                          | 连接 RabbitMQ 服务的密码。应与`rabbit 服务`中的`environment`对应项目一致.|
