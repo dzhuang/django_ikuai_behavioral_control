@@ -28,6 +28,8 @@ Django iKuai Behavioral Control (Django iKuai行为控制)是一个基于 Django
 
 ### 安装
 
+在可以访问本地爱快路由器的设备上进行以下操作：
+
 1. **克隆仓库：**
    ```bash
    git clone https://github.com/dzhuang/django_ikuai_behavioral_control.git
@@ -53,6 +55,14 @@ Django iKuai Behavioral Control (Django iKuai行为控制)是一个基于 Django
      ```
    - 该命令读取您刚刚准备的 `docker-compose.yml` 文件，并根据其配置启动应用程序。数据库迁移作为应用程序启动过程的一部分自动执行。
 
+5. **添加爱快路由器：**
+
+访问`http://127.0.0.1/admin` 进入管理界面，用户名和密码为 `DJANGO_SUPERUSER_USERNAME` 和 `DJANGO_SUPERUSER_PASSWORD`。 在`MY_ROUTER`中添加爱快路由器，其中，url为爱快路由器的Url，管理员用户名和管理员密码为爱快路由的相应设置.
+
+![Add Router](https://github.com/dzhuang/django_ikuai_behavioral_control/blob/main/assets/add_router.png?raw=true)
+
+访问 `http://127.0.0.1/`. 注意，对设备的协议控制，应从MAC分组操作开始，即使是单一的设备，也应设制MAC分组.
+
 
 ## `docker-compose.yml`文件中的配置说明
 
@@ -66,8 +76,8 @@ Django iKuai Behavioral Control (Django iKuai行为控制)是一个基于 Django
 | `DJANGO_SUPERUSER_PASSWORD`                  | Django 超级用户的密码。                                                                     |
 | `DJANGO_SUPERUSER_EMAIL`                     | Django 超级用户的电子邮件地址。                                                               |
 | `BEHAVIORAL_CONTROL_SERVER_SECRET_KEY`       | Django 应用的秘密密钥，用于安全性关键的操作，如会话、签名等。应保持秘密。                            |
-| `BEHAVIORAL_CONTROL_ALLOWED_HOST_`           | 重要：以此开头的键名表示允许访问应用的主机名或IP地址，对应于Django设置中的 [ALLOWED_HOSTS](https://docs.djangoproject.com/en/5.0/ref/settings/#allowed-hosts) 。键值不需要包含scheme，应包含该网站的主机域名和实例的本地ip。例如：`BEHAVIORAL_CONTROL_ALLOWED_HOST_router=foo.com` 和 `BEHAVIORAL_CONTROL_ALLOWED_HOST_local=192.168.1.1`。 |
-| `BEHAVIORAL_CONTROL_CSRF_TRUSTED_ORIGINS_`   | 重要：以此开头的键名表示可信的来源域名或IP，用于 CSRF 验证，对应于Django设置中的 [CSRF_TRUSTED_ORIGINS](https://docs.djangoproject.com/en/5.0/ref/settings/#std-setting-CSRF_TRUSTED_ORIGINS)。键值中必须包含scheme（如 `http://` 或 `https://`）。应包含该网站的域名访问方式和实例的本地ip访问方式，例如示例中的：`BEHAVIORAL_CONTROL_CSRF_TRUSTED_ORIGINS_router=https://foo.com` 和 `BEHAVIORAL_CONTROL_CSRF_TRUSTED_ORIGINS_local=http://192.168.1.1`。 |
+| `BEHAVIORAL_CONTROL_ALLOWED_HOST_`           | 重要：以此开头的键名表示允许访问应用的主机名或IP地址，对应于Django设置中的 [ALLOWED_HOSTS](https://docs.djangoproject.com/en/5.0/ref/settings/#allowed-hosts) 。键值不需要包含scheme，应包含该网站的主机域名和实例的本地ip。例如：`BEHAVIORAL_CONTROL_ALLOWED_HOST_router=foo.com` 和 `BEHAVIORAL_CONTROL_ALLOWED_HOST_local=192.168.9.1`。 |
+| `BEHAVIORAL_CONTROL_CSRF_TRUSTED_ORIGINS_`   | 重要：以此开头的键名表示可信的来源域名或IP，用于 CSRF 验证，对应于Django设置中的 [CSRF_TRUSTED_ORIGINS](https://docs.djangoproject.com/en/5.0/ref/settings/#std-setting-CSRF_TRUSTED_ORIGINS)。键值中必须包含scheme（如 `http://` 或 `https://`）。应包含该网站的域名访问方式和实例的本地ip访问方式，例如示例中的：`BEHAVIORAL_CONTROL_CSRF_TRUSTED_ORIGINS_router=https://foo.com` 和 `BEHAVIORAL_CONTROL_CSRF_TRUSTED_ORIGINS_local=http://192.168.9.1`。 |
 
 `behavioral_control_service 服务`其它的设置还包括：
 
