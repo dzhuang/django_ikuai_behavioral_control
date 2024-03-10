@@ -70,7 +70,7 @@ Django iKuai Behavioral Control (Django iKuai行为控制)是一个基于 Django
 | `BEHAVIORAL_CONTROL_ALLOWED_HOST_`           | 重要：以此开头的键名表示允许访问应用的主机名或IP地址，对应于Django设置中的 [ALLOWED_HOSTS](https://docs.djangoproject.com/en/5.0/ref/settings/#allowed-hosts) 。键值不需要包含scheme，应包含该网站的主机域名和实例的本地ip。例如：`BEHAVIORAL_CONTROL_ALLOWED_HOST_router=foo.com` 和 `BEHAVIORAL_CONTROL_ALLOWED_HOST_local=192.168.1.1`。 |
 | `BEHAVIORAL_CONTROL_CSRF_TRUSTED_ORIGINS_`   | 重要：以此开头的键名表示可信的来源域名或IP，用于 CSRF 验证，对应于Django设置中的 [CSRF_TRUSTED_ORIGINS](https://docs.djangoproject.com/en/5.0/ref/settings/#std-setting-CSRF_TRUSTED_ORIGINS)。键值中必须包含scheme（如 `http://` 或 `https://`）。应包含该网站的域名访问方式和实例的本地ip访问方式，例如示例中的：`BEHAVIORAL_CONTROL_CSRF_TRUSTED_ORIGINS_router=https://foo.com` 和 `BEHAVIORAL_CONTROL_CSRF_TRUSTED_ORIGINS_local=http://192.168.1.1`。 |
 
-以下的项目必须修改，以保证安全。
+`behavioral_control_service 服务`其它的设置还包括：
 
 | 设置项                                         | 描述                                                                                   |
 |----------------------------------------------|--------------------------------------------------------------------------------------|
@@ -104,7 +104,11 @@ Django iKuai Behavioral Control (Django iKuai行为控制)是一个基于 Django
 
 ### celery 服务
 
-该服务中列出的`environment`项目的设置，应与`behavioral_control_service 服务`中对应的项目一致.
+该服务中列出的`environment`项目的设置，应与`behavioral_control_service 服务`中对应的项目一致，所以仍然需要手动重启docker-compose.
+
+### watchtower 服务
+
+监控并自动更新`ikuai_behavioral_control服务`，目前存在bug：无法删除旧的image并使用新image创建容器.
 
 
 ## 贡献

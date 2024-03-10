@@ -36,7 +36,7 @@ services:
       - rabbit
     restart: always
     labels:
-      - "com.centurylinklabs.watchtower.scope=router_behavioral_control"
+      - "com.centurylinklabs.watchtower.scope=ikuai_behavioral_control"
 
   postgres_db_service:
     image: postgres:14
@@ -91,19 +91,19 @@ services:
       - rabbit
     restart: always
     labels:
-      - "com.centurylinklabs.watchtower.scope=router_behavioral_control"
+      - "com.centurylinklabs.watchtower.scope=ikuai_behavioral_control"
 
   # Enable image/container auto update
-  watchtower:
-    image: containrrr/watchtower
-    container_name: watchtower_behavioral_control
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      WATCHTOWER_MONITOR_ONLY: 'true'
-    command: --interval 30 behavioral_control, behavioral_control_celery
-    labels:
-      - "com.centurylinklabs.watchtower.scope=ikuai_behavioral_control"
+#  watchtower:
+#    image: containrrr/watchtower
+#    container_name: watchtower_behavioral_control
+#    volumes:
+#      - /var/run/docker.sock:/var/run/docker.sock
+#    environment:
+#      WATCHTOWER_MONITOR_ONLY: 'true'
+#    command: --cleanup --interval 30 behavioral_control, behavioral_control_celery
+#    labels:
+#      - "com.centurylinklabs.watchtower.scope=ikuai_behavioral_control"
 
 volumes:
   redis_data:
