@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-03-01 19:49+0800\n"
+"POT-Creation-Date: 2024-03-10 20:49+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,8 +18,6 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
-#, fuzzy
-#| msgid "Parent Control"
 msgid "Behavioral Control"
 msgstr "行为管控"
 
@@ -163,6 +161,7 @@ msgstr "路由器"
 msgid "Routers"
 msgstr "路由器"
 
+#, python-format
 msgid "Fetch info and set cache for %s"
 msgstr "抓取%s的信息并缓存"
 
@@ -206,14 +205,6 @@ msgstr "设备"
 msgid "{device} on {router}"
 msgstr "{router}上的{device}"
 
-#, python-brace-format
-msgid "must be 0 or 1, while got {data}."
-msgstr "必须为0或1，而得到的是{data}."
-
-#, python-brace-format
-msgid "must be 'no' or 'yes', while got {data}."
-msgstr "必须为‘no’或'yes'，而得到的是{data}."
-
 msgid "Done"
 msgstr "完成"
 
@@ -248,7 +239,7 @@ msgid "Online"
 msgstr "在线"
 
 msgid "Last seen"
-msgstr ""
+msgstr "最后在线"
 
 msgid "Blocked"
 msgstr "禁用"
@@ -334,6 +325,9 @@ msgstr "添加协议控制"
 msgid "Edit MAC control on router"
 msgstr "从路由器上编辑MAC控制信息"
 
+msgid "All MAC groups"
+msgstr "所有MAC分组"
+
 msgid "Protocol control"
 msgstr "协议控制"
 
@@ -356,6 +350,9 @@ msgstr "更新设备设置 {device_name}"
 #, python-format
 msgid "The device is the only element in group '%s' and can't be removed."
 msgstr "这个设备在组'%s'中只有一个元素，不能移除"
+
+msgid "Device not changed."
+msgstr "设备未变化."
 
 msgid "Successfully updated device."
 msgstr "成功更新了设备."
