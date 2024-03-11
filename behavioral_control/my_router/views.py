@@ -599,7 +599,7 @@ class DomainBlacklistEditView(AddEditViewMixin, FormView):
 
 class ACLL7EditForm(BaseEditWithApplyToForm):
     def __init__(self, protocols_choices, initial_protocols=None,
-                 initial_action="accept",
+                 initial_action="drop",
                  initial_priority=28, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
