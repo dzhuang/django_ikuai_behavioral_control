@@ -22,7 +22,7 @@ jupyter
 ipython
 
 # https://github.com/microsoft/azuredatastudio/issues/23945#issuecomment-1882927090
-notebook==6.5.6
+notebook==7.1.2
 
 # https://blog.csdn.net/qq_57918763/article/details/133648181
 traitlets==5.9.0
