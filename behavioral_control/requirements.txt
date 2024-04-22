@@ -25,4 +25,4 @@ ipython
 notebook==6.5.6
 
 # https://blog.csdn.net/qq_57918763/article/details/133648181
-traitlets==5.9.0
+traitlets==5.14.3
