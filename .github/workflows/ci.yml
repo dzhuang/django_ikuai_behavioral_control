@@ -66,7 +66,7 @@ jobs:
       - name: Test make and compile messages
         working-directory: ./behavioral_control
         env:
-          PARENT_CONTROL_FETCH_INFO_INTERVAL: tests/settings_for_tests.py
+          BEHAVIORAL_CONTROL_LOCAL_TEST_SETTINGS: tests/settings_for_tests.py
         run: |
           python manage.py makemessages -l zh_Hans
           python manage.py compilemessages
